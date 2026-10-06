@@ -310,3 +310,6 @@ En el frame 192 deberías tener, más o menos:
 - [Vortex Force DOP](https://www.sidefx.com/docs/houdini/nodes/dop/vortexforce.html) (SideFX)
 - [POP Force](https://www.sidefx.com/docs/houdini/nodes/dop/popforce.html) (SideFX)
 - Valores tomados de la escena `experimento de houdini 2 (tornado).hipnc`, nodo `/obj/tornado_vortex` (2026-10-06).
+
+---
+© 2026 Venttisca Etterna. Bajo licencia [CC BY 4.0](../LICENSE).
