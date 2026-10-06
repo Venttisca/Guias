@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tornado de partículas en Houdini</title>
+<meta name="description" content="Guía paso a paso para replicar en Houdini 22 un tornado de partículas con Vortex Force, ruido y render con Karma.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+html{-webkit-text-size-adjust:100%}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+/* Layout: índice de pasos fijo a la izquierda en escritorio (chips arriba en móvil), una columna de lectura de ~46rem */
+:root{
+  --bg:#eef0f3; --surface:#ffffff; --sunken:#e3e7ec; --fg:#1b2129; --muted:#5b6573; --line:#cdd3db;
+  --accent:#9a5f1f; --accent-soft:#f3e4cf; --ok:#2f7a4a; --ok-soft:#dcefe2; --warn:#a2481d; --warn-soft:#f6e0d4;
+  --code-bg:#1d2229; --code-fg:#dde3ea; --code-com:#8792a0; --code-kw:#e2b36b; --code-fn:#9fc6e8; --code-num:#e9a07c;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --f-body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#14181d; --surface:#1c2128; --sunken:#232a32; --fg:#e4e8ed; --muted:#9aa4b1; --line:#323a44;
+  --accent:#e0a85e; --accent-soft:#3a2c1b; --ok:#7cc694; --ok-soft:#1d3226; --warn:#ee9a72; --warn-soft:#3b2419;
+  --code-bg:#0f1317; --code-fg:#dde3ea; --code-com:#7b8694; --code-kw:#e2b36b; --code-fn:#9fc6e8; --code-num:#e9a07c;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#14181d; --surface:#1c2128; --sunken:#232a32; --fg:#e4e8ed; --muted:#9aa4b1; --line:#323a44;
+  --accent:#e0a85e; --accent-soft:#3a2c1b; --ok:#7cc694; --ok-soft:#1d3226; --warn:#ee9a72; --warn-soft:#3b2419;
+  --code-bg:#0f1317; --code-fg:#dde3ea; --code-com:#7b8694; --code-kw:#e2b36b; --code-fn:#9fc6e8; --code-num:#e9a07c;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:4.5rem}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{background:var(--bg);color:var(--fg);font:1.03rem/1.62 var(--f-body);padding-inline:16px;padding-block:0 4rem}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+code{font-family:var(--f-mono);font-size:.86em;background:var(--sunken);padding:.08em .35em;border-radius:4px;overflow-wrap:anywhere}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15;margin:0}
+
+.shell{max-width:72rem;margin-inline:auto;display:grid;grid-template-columns:15rem minmax(0,1fr);gap:3rem}
+@media (max-width:900px){.shell{grid-template-columns:minmax(0,1fr);gap:0}}
+
+/* índice */
+nav.toc{position:sticky;top:env(safe-area-inset-top,0px);align-self:start;padding-block:2rem;max-height:100vh;overflow:auto}
+nav.toc .lbl{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 .6rem}
+nav.toc ol{list-style:none;margin:0;padding:0;display:grid;gap:.15rem}
+nav.toc a{display:flex;gap:.6rem;align-items:baseline;text-decoration:none;color:var(--muted);padding:.3rem .5rem;border-radius:6px;font-size:.92rem}
+nav.toc a:hover{background:var(--sunken);color:var(--fg)}
+nav.toc a.on{color:var(--fg);background:var(--sunken)}
+nav.toc a .n{font-family:var(--f-mono);font-size:.75rem;min-width:1.4rem;color:var(--accent)}
+nav.toc a.done .n::after{content:" ✓";color:var(--ok)}
+.progress{margin-top:1rem;font-size:.82rem;color:var(--muted)}
+.bar{height:6px;background:var(--sunken);border-radius:3px;overflow:hidden;margin-top:.35rem}
+.bar i{display:block;height:100%;width:0;background:var(--ok);transition:width .25s}
+@media (max-width:900px){
+  nav.toc{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:.6rem;margin-inline:-16px;padding-inline:16px;border-bottom:1px solid var(--line);max-height:none}
+  nav.toc .lbl,.progress{display:none}
+  nav.toc ol{display:flex;overflow-x:auto;gap:.3rem;scrollbar-width:none}
+  nav.toc a{white-space:nowrap;border:1px solid var(--line);font-size:.85rem}
+}
+
+main{min-width:0;max-width:46rem;padding-block:2.5rem}
+
+/* portada */
+.eyebrow{font-family:var(--f-mono);font-size:.78rem;color:var(--accent);letter-spacing:.04em;margin:0 0 .7rem}
+h1{font-size:clamp(2rem,5vw,3.1rem);font-weight:800;letter-spacing:-.02em}
+.lede{font-size:1.15rem;color:var(--muted);margin:.9rem 0 1.5rem;max-width:38rem}
+.hero-media{margin:0;border-radius:10px;overflow:hidden;background:#000;aspect-ratio:16/9;max-width:100%}
+.hero-media video,.hero-media img{width:100%;height:100%;object-fit:cover;display:block}
+.hero-cap{font-size:.85rem;color:var(--muted);margin:.5rem 0 0}
+.facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:1.5rem 0 0}
+.facts div{background:var(--surface);padding:.7rem .85rem}
+.facts dt{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.facts dd{margin:.15rem 0 0;font-family:var(--f-display);font-weight:700;font-size:1.1rem;font-variant-numeric:tabular-nums}
+@media (max-width:560px){.facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.summary{margin:2rem 0 0;padding:1.1rem 1.25rem;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.summary h2{font-size:1.05rem;margin-bottom:.5rem}
+.summary ol{margin:0;padding-left:1.2rem;display:grid;gap:.3rem}
+
+/* secciones */
+section{padding-top:3rem}
+section > header{display:flex;gap:.9rem;align-items:flex-start;margin-bottom:1rem}
+.num{flex:none;font-family:var(--f-display);font-weight:800;font-size:1.05rem;width:2.3rem;height:2.3rem;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-variant-numeric:tabular-nums}
+section h2{font-size:1.55rem;font-weight:700;letter-spacing:-.01em;padding-top:.25rem}
+.where{display:block;font-family:var(--f-mono);font-size:.78rem;color:var(--muted);font-weight:400;margin-top:.3rem;letter-spacing:0}
+.done-toggle{margin-left:auto;flex:none;display:flex;align-items:center;gap:.4rem;font-size:.82rem;color:var(--muted);cursor:pointer;padding:.3rem .55rem;border:1px solid var(--line);border-radius:999px;user-select:none;margin-top:.2rem}
+.done-toggle input{accent-color:var(--ok);margin:0}
+section.is-done .done-toggle{color:var(--ok);border-color:var(--ok);background:var(--ok-soft)}
+p,ul,ol{margin:.7rem 0}
+li{margin:.2rem 0}
+
+/* tablas */
+.tw{overflow-x:auto;margin:1rem 0;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.93rem}
+th,td{text-align:left;padding:.5rem .75rem;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+th{font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;background:var(--sunken)}
+td b{font-variant-numeric:tabular-nums}
+td:first-child{white-space:nowrap}
+
+/* código */
+.code{position:relative;margin:1rem 0;border-radius:8px;background:var(--code-bg);color:var(--code-fg)}
+.code .tag{position:absolute;top:.45rem;left:.8rem;font-family:var(--f-mono);font-size:.7rem;color:var(--code-com);letter-spacing:.06em;text-transform:uppercase}
+.code pre{margin:0;padding:2rem 1rem 1rem;overflow-x:auto;font:.83rem/1.6 var(--f-mono);tab-size:2}
+.code pre code{background:none;padding:0;font-size:inherit;overflow-wrap:normal;color:inherit}
+.copy{position:absolute;top:.4rem;right:.45rem;font:600 .75rem var(--f-body);padding:.3rem .65rem;border-radius:5px;border:1px solid #3a434e;background:#262d36;color:#dde3ea;cursor:pointer}
+.copy:hover{background:#313a45}
+.c-com{color:var(--code-com);font-style:italic}.c-kw{color:var(--code-kw)}.c-fn{color:var(--code-fn)}.c-num{color:var(--code-num)}
+
+/* figuras */
+figure.shot{margin:1.1rem 0}
+figure.shot button{all:unset;cursor:zoom-in;display:block;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:#2a2a2a;max-width:100%}
+figure.shot img{display:block;width:100%;height:auto}
+figure.shot button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+figcaption{font-size:.86rem;color:var(--muted);margin-top:.45rem}
+.pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
+@media (max-width:700px){.pair{grid-template-columns:minmax(0,1fr)}}
+
+/* avisos */
+.note{margin:1.1rem 0;padding:.85rem 1rem;border-radius:8px;border:1px solid var(--line);background:var(--surface)}
+.note strong:first-child{display:block;font-family:var(--f-display);margin-bottom:.2rem}
+.note.check{border-color:var(--ok);background:var(--ok-soft)}
+.note.check strong:first-child{color:var(--ok)}
+.note.warn{border-color:var(--warn);background:var(--warn-soft)}
+.note.warn strong:first-child{color:var(--warn)}
+.note.tip strong:first-child{color:var(--accent)}
+.note ul{margin:.3rem 0 0;padding-left:1.1rem}
+
+.diagram{overflow-x:auto;margin:1rem 0;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.diagram pre{margin:0;padding:1rem;font:.8rem/1.5 var(--f-mono);color:var(--fg)}
+
+details{margin:.6rem 0;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+details summary{cursor:pointer;padding:.7rem 1rem;font-weight:700}
+details > div{padding:0 1rem .8rem}
+
+footer{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--line);font-size:.86rem;color:var(--muted)}
+
+dialog.lb{border:0;padding:0;background:transparent;max-width:96vw;max-height:94vh}
+dialog.lb::backdrop{background:rgba(8,10,13,.86)}
+dialog.lb img{display:block;max-width:96vw;max-height:88vh;width:auto;height:auto;border-radius:6px}
+dialog.lb p{color:#dde3ea;font-size:.88rem;margin:.5rem 0 0;max-width:60rem}
+dialog.lb button{position:fixed;top:12px;right:12px;font:600 .9rem var(--f-body);background:#262d36;color:#fff;border:1px solid #444;border-radius:6px;padding:.4rem .8rem;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div class="shell">
+<nav class="toc" aria-label="Pasos">
+  <p class="lbl">Pasos</p>
+  <ol id="toc">
+    <li><a href="#antes"><span class="n">·</span>Antes de empezar</a></li>
+    <li><a href="#mapa"><span class="n">·</span>Mapa de nodos</a></li>
+    <li><a href="#p1"><span class="n">1</span>Objeto contenedor</a></li>
+    <li><a href="#p2"><span class="n">2</span>Piso visual</a></li>
+    <li><a href="#p3"><span class="n">3</span>Emisor</a></li>
+    <li><a href="#p4"><span class="n">4</span>Eje del tornado</a></li>
+    <li><a href="#p5"><span class="n">5</span>Red de simulación</a></li>
+    <li><a href="#p6"><span class="n">6</span>Nodos de la simulación</a></li>
+    <li><a href="#p7"><span class="n">7</span>Conexiones</a></li>
+    <li><a href="#p8"><span class="n">8</span>Partículas a SOPs</a></li>
+    <li><a href="#p9"><span class="n">9</span>Cámara y luces</a></li>
+    <li><a href="#p10"><span class="n">10</span>Render con Karma</a></li>
+    <li><a href="#comprobar"><span class="n">·</span>¿Salió bien?</a></li>
+    <li><a href="#problemas"><span class="n">·</span>Si algo sale mal</a></li>
+    <li><a href="#entender"><span class="n">·</span>Para entenderlo</a></li>
+  </ol>
+  <div class="progress"><span id="prog-txt">0 de 10 pasos</span><div class="bar"><i id="prog-bar"></i></div></div>
+</nav>
+
+<main>
+  <p class="eyebrow">Houdini 22.0 · POPs + Vortex Force · Karma</p>
+  <h1>Tornado de partículas en Houdini</h1>
+  <p class="lede">Paso a paso para construir un embudo de partículas que gira, sube, serpentea y se deshace en la punta, sobre un piso, y renderizarlo con Karma. Es la prueba 3b del experimento de la clase de Simulación.</p>
+
+  <figure class="hero-media">
+    <video src="img/karma.mp4" poster="img/resultado.jpg" autoplay muted loop playsinline controls aria-label="Render del tornado con Karma"></video>
+  </figure>
+  <p class="hero-cap">Frames 1–168 (7 s a 24 fps), Karma XPU, 1280 × 720. La marca de agua es de la licencia Apprentice.</p>
+
+  <dl class="facts">
+    <div><dt>Altura</dt><dd>~50 m</dd></div>
+    <div><dt>Partículas</dt><dd>~34 000</dd></div>
+    <div><dt>Simulación</dt><dd>~30 s</dd></div>
+    <div><dt>Armarlo</dt><dd>45–60 min</dd></div>
+  </dl>
+
+  <div class="summary">
+    <h2>La idea en cuatro líneas</h2>
+    <ol>
+      <li>Un <strong>círculo</strong> en el piso suelta partículas.</li>
+      <li>Una <strong>línea vertical</strong> es el eje del tornado. Cada punto de la línea dice qué tan ancho es el embudo a esa altura.</li>
+      <li>Un <strong>Vortex Force</strong> hace girar y subir las partículas alrededor de esa línea.</li>
+      <li><strong>Ruido</strong> y una regla de "muerte" por altura lo vuelven irregular, como un tornado de verdad.</li>
+    </ol>
+  </div>
+
+  <section id="antes">
+    <header><h2>Antes de empezar</h2></header>
+    <ul>
+      <li><strong>Versión:</strong> Houdini 22.0 Apprentice. En Indie o FX es igual; en versiones anteriores algunos nodos pueden verse distintos.</li>
+      <li><strong>Unidades:</strong> 1 unidad = 1 metro. El eje Y apunta hacia arriba.</li>
+      <li><strong>Animación:</strong> 24 fps, frames 1 a 240 (el reloj abajo a la derecha, <em>Global Animation Options</em>).</li>
+      <li><strong>Crear nodos:</strong> dentro de una red pulsa <kbd>Tab</kbd> y escribe el nombre (p. ej. <code>grid</code>). Doble clic o <kbd>I</kbd> para entrar a un nodo; <kbd>U</kbd> para salir.</li>
+      <li><strong>Renombra cada nodo</strong> como dice la guía (doble clic en el nombre). Algunas rutas (<em>SOP Path</em>) usan esos nombres.</li>
+      <li><strong>Display flag</strong> (la bandera azul a la derecha del nodo): indica qué nodo se ve en el viewport.</li>
+    </ul>
+    <div class="note tip"><strong>Los códigos VEX</strong>Los tres códigos usan <code>chf("nombre")</code> para que cada valor sea un slider. Después de pegar el código en un Wrangle, pulsa <strong>Create spare parameters</strong> (el cuadrito con un <code>+</code> a la derecha del cuadro de código). Los sliders aparecen en 0: escribe los valores de la tabla.</div>
+  </section>
+
+  <section id="mapa">
+    <header><h2>Mapa de lo que vas a construir<span class="where">/obj/tornado_vortex  y  /obj/tornado_vortex/sim_tornado</span></h2></header>
+    <p>Dos redes: la de geometría (SOPs), con el piso, el emisor y el eje; y la de simulación (DOPs), donde se mueven las partículas.</p>
+    <figure class="shot"><button type="button"><img src="img/01_red_sop.png" alt="Red SOP dentro de tornado_vortex" loading="lazy" width="1300" height="760"></button>
+      <figcaption>Red SOP dentro de <code>/obj/tornado_vortex</code>. El display flag está en <code>OUT</code>. El aviso amarillo del merge es normal: las partículas y el piso tienen atributos distintos.</figcaption></figure>
+    <figure class="shot"><button type="button"><img src="img/02_red_dop.png" alt="Red DOP dentro de sim_tornado" loading="lazy" width="1300" height="760"></button>
+      <figcaption>Red DOP dentro de <code>sim_tornado</code>. <code>punta_dispersa</code> llega a la 3ª entrada del solver, <code>ground_plane</code> a la izquierda del merge y <code>curva_eje</code> al costado del Vortex Force.</figcaption></figure>
+    <p><code>emisor</code> y <code>atributos_vortex</code> no tienen cables hacia la simulación: los nodos de adentro los leen por su ruta (<em>SOP Path</em>).</p>
+  </section>
+
+  <section id="p1" data-step>
+    <header><span class="num">1</span><h2>El objeto contenedor<span class="where">/obj</span></h2><label class="done-toggle"><input type="checkbox" id="done-p1">Hecho</label></header>
+    <ol>
+      <li>En <code>/obj</code>, <kbd>Tab</kbd> → <strong>Geometry</strong>. Llámalo <code>tornado_vortex</code>.</li>
+      <li>Entra con doble clic. Todo lo que sigue va adentro, salvo la cámara, las luces y el render.</li>
+    </ol>
+    <figure class="shot"><button type="button"><img src="img/00_red_obj.png" alt="Nivel obj con el objeto, la cámara y las luces" loading="lazy" width="1100" height="600"></button>
+      <figcaption>El nivel <code>/obj</code> al final: <code>tornado_vortex</code>, la cámara y las dos luces. (<code>tornado</code> es la prueba 1; no hace falta.)</figcaption></figure>
+  </section>
+
+  <section id="p2" data-step>
+    <header><span class="num">2</span><h2>El piso visual<span class="where">/obj/tornado_vortex</span></h2><label class="done-toggle"><input type="checkbox" id="done-p2">Hecho</label></header>
+    <p>Este es el piso que <strong>se ve</strong>. El que <strong>choca</strong> con las partículas es el Ground Plane del paso 6, y ese no aparece en el render.</p>
+    <div class="tw"><table>
+      <tr><th>Nodo</th><th>Nombre</th><th>Parámetros</th></tr>
+      <tr><td>Grid</td><td><code>piso_visual</code></td><td>Size <b>120 × 120</b>, Rows <b>2</b>, Columns <b>2</b></td></tr>
+      <tr><td>Color</td><td><code>color_piso</code></td><td>Color <b>(0.18, 0.2, 0.24)</b>. Conéctalo debajo de <code>piso_visual</code></td></tr>
+    </table></div>
+  </section>
+
+  <section id="p3" data-step>
+    <header><span class="num">3</span><h2>El emisor<span class="where">/obj/tornado_vortex</span></h2><label class="done-toggle"><input type="checkbox" id="done-p3">Hecho</label></header>
+    <p>Un círculo acostado en el piso. Las partículas nacen sobre su superficie. No se conecta a nada.</p>
+    <div class="tw"><table>
+      <tr><th>Nodo</th><th>Nombre</th><th>Parámetros</th></tr>
+      <tr><td>Circle</td><td><code>emisor</code></td><td>Primitive Type <b>Polygon</b>, Orientation <b>ZX Plane</b>, Radius <b>4, 4</b>, Divisions <b>48</b></td></tr>
+    </table></div>
+    <figure class="shot"><button type="button"><img src="img/10_emisor.png" alt="Parámetros del nodo emisor" loading="lazy" width="820" height="341"></button>
+      <figcaption><em>Reverse</em> se activa solo al elegir ZX Plane.</figcaption></figure>
+  </section>
+
+  <section id="p4" data-step>
+    <header><span class="num">4</span><h2>El eje del tornado<span class="where">/obj/tornado_vortex</span></h2><label class="done-toggle"><input type="checkbox" id="done-p4">Hecho</label></header>
+    <p>Es el paso clave. Una línea vertical de 45 m cuyos puntos le dicen al Vortex Force <strong>qué tan ancho</strong> es el embudo a cada altura, <strong>qué tan rápido</strong> gira y <strong>cuánto empuja</strong> hacia arriba. Además se mueve con ruido para que la columna serpentee.</p>
+    <ol>
+      <li><kbd>Tab</kbd> → <strong>Line</strong>, nombre <code>eje_tornado</code>: Length <b>45</b>, Points <b>16</b>. La dirección (0, 1, 0) es la de por defecto.</li>
+    </ol>
+    <figure class="shot"><button type="button"><img src="img/11_eje_tornado.png" alt="Parámetros del nodo eje_tornado" loading="lazy" width="820" height="219"></button></figure>
+    <ol start="2">
+      <li>Debajo, <kbd>Tab</kbd> → <strong>Attribute Wrangle</strong>, nombre <code>atributos_vortex</code> (Run Over: <em>Points</em>). Pega el código:</li>
+    </ol>
+<div class="code"><span class="tag">VEX · atributos_vortex</span><pre><code>// h: 0 en el piso, 1 arriba del tornado
+float h = @P.y / 45.0;
+// silueta del embudo: angosto abajo, ancho arriba
+f@orbitrad  = chf("radio_base") + (chf("radio_tope") - chf("radio_base")) * pow(h, chf("curvatura"));
+f@orbitvel  = chf("velocidad_orbita");   // m/s tangencial
+f@orbitlift = chf("lift");               // fuerza hacia arriba (la punta la controla punta_dispersa)
+f@orbitmaxd = f@orbitrad * chf("alcance"); // hasta donde llega la fuerza
+// la columna serpentea: el ruido crece con la altura (la base queda fija en el piso)
+vector n = noise(set(h * chf("ondas"), @Time * chf("velocidad_onda"), 0.0)) - 0.5;
+vector n2 = noise(set(h * chf("ondas") + 17.3, @Time * chf("velocidad_onda"), 5.1)) - 0.5;
+@P.x += n.x * 2 * chf("serpenteo") * h;
+@P.z += n2.x * 2 * chf("serpenteo") * h;</code></pre></div>
+    <ol start="3">
+      <li>Pulsa <strong>Create spare parameters</strong> y escribe los valores:</li>
+    </ol>
+    <div class="tw"><table>
+      <tr><th>Slider</th><th>Valor</th><th>Qué controla</th></tr>
+      <tr><td>radio_base</td><td><b>2.5</b></td><td>Radio del embudo en el piso (m)</td></tr>
+      <tr><td>radio_tope</td><td><b>18</b></td><td>Radio arriba (m)</td></tr>
+      <tr><td>curvatura</td><td><b>1.6</b></td><td>Mayor que 1: el embudo se abre más cerca de la punta</td></tr>
+      <tr><td>velocidad_orbita</td><td><b>18</b></td><td>Velocidad de giro (m/s)</td></tr>
+      <tr><td>lift</td><td><b>30</b></td><td>Empuje hacia arriba</td></tr>
+      <tr><td>alcance</td><td><b>1.6</b></td><td>La fuerza llega hasta radio × 1.6</td></tr>
+      <tr><td>ondas</td><td><b>1.5</b></td><td>Cuántas curvas tiene la columna</td></tr>
+      <tr><td>velocidad_onda</td><td><b>0.4</b></td><td>Qué tan rápido se mueven esas curvas</td></tr>
+      <tr><td>serpenteo</td><td><b>8</b></td><td>Cuánto se desplaza la punta (m)</td></tr>
+    </table></div>
+    <figure class="shot"><button type="button"><img src="img/12_atributos_vortex.png" alt="Nodo atributos_vortex con el código y los sliders" loading="lazy" width="900" height="741"></button>
+      <figcaption><code>atributos_vortex</code> terminado: el código y, arriba, los sliders creados.</figcaption></figure>
+    <div class="note check"><strong>Comprueba</strong>Pon el display flag en <code>atributos_vortex</code> y mueve la línea de tiempo: la línea se dobla y se mueve, con la base fija en el origen. En el <em>Geometry Spreadsheet</em> aparecen <code>orbitrad</code>, <code>orbitvel</code>, <code>orbitlift</code> y <code>orbitmaxd</code>.</div>
+    <p>Los nombres de los atributos tienen que ser <strong>exactamente esos</strong>: son los que el Vortex Force busca por defecto.</p>
+  </section>
+
+  <section id="p5" data-step>
+    <header><span class="num">5</span><h2>La red de simulación<span class="where">/obj/tornado_vortex</span></h2><label class="done-toggle"><input type="checkbox" id="done-p5">Hecho</label></header>
+    <p><kbd>Tab</kbd> → <strong>DOP Network</strong>, nombre <code>sim_tornado</code>. Entra en él: los pasos 6 y 7 son adentro.</p>
+  </section>
+
+  <section id="p6" data-step>
+    <header><span class="num">6</span><h2>Los nodos de la simulación<span class="where">/obj/tornado_vortex/sim_tornado</span></h2><label class="done-toggle"><input type="checkbox" id="done-p6">Hecho</label></header>
+    <div class="tw"><table>
+      <tr><th>Nodo (Tab →)</th><th>Nombre</th><th>Parámetros</th></tr>
+      <tr><td>POP Object</td><td><code>particulas</code></td><td>Por defecto</td></tr>
+      <tr><td>POP Source</td><td><code>emitir_base</code></td><td>Pestaña <em>Source</em>: Emission Type <b>Scatter onto Surfaces</b>, Geometry Source <em>Use Parameter Values</em>, SOP <code>/obj/tornado_vortex/emisor</code>. Pestaña <em>Birth</em>: Const. Birth Rate <b>6000</b>, Life Expectancy <b>8</b>, Life Variance <b>1.5</b></td></tr>
+      <tr><td>POP Force</td><td><code>ruido_turbulencia</code></td><td>Force <b>0, 0, 0</b> (solo ruido). Pestaña <em>Noise</em>: Amplitude <b>8</b>, Swirl Size <b>6</b>, Pulse Length <b>2</b></td></tr>
+      <tr><td>POP Wrangle</td><td><code>punta_dispersa</code></td><td>El código de abajo</td></tr>
+      <tr><td>POP Solver</td><td><code>pop_solver</code></td><td>Por defecto</td></tr>
+      <tr><td>Ground Plane</td><td><code>ground_plane</code></td><td>Por defecto: piso de colisión en y = 0</td></tr>
+      <tr><td>Merge</td><td><code>merge1</code></td><td>Por defecto</td></tr>
+      <tr><td>SOP Geometry</td><td><code>curva_eje</code></td><td><em>Use External SOP</em> activado, SOP Path <code>/obj/tornado_vortex/atributos_vortex</code>. <em>Time</em> se queda en <code>$T</code></td></tr>
+      <tr><td>Vortex Force</td><td><code>fuerza_vortex</code></td><td>Lift Radius Multiplier <b>3</b>. Los nombres de atributos se quedan por defecto</td></tr>
+      <tr><td>Gravity Force</td><td><code>gravity1</code></td><td>Por defecto (−9.81)</td></tr>
+    </table></div>
+
+    <div class="pair">
+      <figure class="shot"><button type="button"><img src="img/20_emitir_base_source.png" alt="POP Source, pestaña Source" loading="lazy" width="820" height="442"></button><figcaption><code>emitir_base</code>, pestaña Source.</figcaption></figure>
+      <figure class="shot"><button type="button"><img src="img/21_emitir_base_birth.png" alt="POP Source, pestaña Birth" loading="lazy" width="820" height="443"></button><figcaption><code>emitir_base</code>, pestaña Birth.</figcaption></figure>
+    </div>
+    <figure class="shot"><button type="button"><img src="img/22_ruido_turbulencia.png" alt="POP Force con los valores de ruido" loading="lazy" width="820" height="460"></button>
+      <figcaption><code>ruido_turbulencia</code>: Force en 0 y los valores en la pestaña Noise.</figcaption></figure>
+
+    <p>Código de <code>punta_dispersa</code> (después pulsa <strong>Create spare parameters</strong>):</p>
+<div class="code"><span class="tag">VEX · punta_dispersa</span><pre><code>// Cada particula tiene su propia altura de "muerte" entre altura_min y altura_max,
+// asi la punta queda irregular y no se apilan en una tapa.
+float limite = fit01(rand(@id * 13.7), chf("altura_min"), chf("altura_max"));
+float zona   = fit(@P.y, limite - chf("zona_fade"), limite, 0, 1);
+// encogen al acercarse a su limite (se desvanecen en vez de cortarse)
+f@pscale = 0.04 * (1 - zona);
+// cerca del limite se abren hacia afuera, como el humo que sale por arriba
+vector rad = set(@P.x, 0, @P.z);
+v@force += normalize(rad) * chf("empuje_afuera") * zona;
+if (@P.y > limite) i@dead = 1;</code></pre></div>
+    <div class="tw"><table>
+      <tr><th>Slider</th><th>Valor</th></tr>
+      <tr><td>altura_min</td><td><b>30</b></td></tr>
+      <tr><td>altura_max</td><td><b>50</b></td></tr>
+      <tr><td>zona_fade</td><td><b>8</b></td></tr>
+      <tr><td>empuje_afuera</td><td><b>25</b></td></tr>
+    </table></div>
+    <figure class="shot"><button type="button"><img src="img/23_punta_dispersa.png" alt="POP Wrangle punta_dispersa" loading="lazy" width="900" height="597"></button><figcaption><code>punta_dispersa</code> con su código y sliders.</figcaption></figure>
+    <div class="pair">
+      <figure class="shot"><button type="button"><img src="img/24_curva_eje.png" alt="SOP Geometry curva_eje" loading="lazy" width="820" height="478"></button><figcaption><code>curva_eje</code>. El campo <em>Time</em> sale en verde porque tiene la expresión <code>$T</code>: muestra el tiempo actual.</figcaption></figure>
+      <figure class="shot"><button type="button"><img src="img/25_fuerza_vortex.png" alt="Vortex Force fuerza_vortex" loading="lazy" width="820" height="609"></button><figcaption><code>fuerza_vortex</code>. Abajo se ven sus dos entradas: <code>merge1</code> y <code>curva_eje</code>.</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="p7" data-step>
+    <header><span class="num">7</span><h2>Conectar la simulación<span class="where">/obj/tornado_vortex/sim_tornado</span></h2><label class="done-toggle"><input type="checkbox" id="done-p7">Hecho</label></header>
+    <p>Aquí es donde es más fácil equivocarse. Sigue el orden y compara con la captura de la red DOP del mapa.</p>
+    <ol>
+      <li><code>particulas</code> → <strong>1ª entrada</strong> (Object) de <code>pop_solver</code>.</li>
+      <li><code>emitir_base</code> → <code>ruido_turbulencia</code> → <code>punta_dispersa</code> → <strong>3ª entrada</strong> (Sources) de <code>pop_solver</code>. La 2ª (Pre-Solve) queda vacía.</li>
+      <li><code>ground_plane</code> → <strong>1ª entrada (izquierda)</strong> de <code>merge1</code>; <code>pop_solver</code> → 2ª entrada.</li>
+      <li><code>merge1</code> → 1ª entrada de <code>fuerza_vortex</code>.</li>
+      <li><code>curva_eje</code> → <strong>2ª entrada</strong> de <code>fuerza_vortex</code>.</li>
+      <li><code>fuerza_vortex</code> → <code>gravity1</code> → <code>output</code>. El display flag va en <code>output</code>.</li>
+    </ol>
+    <div class="diagram"><pre>particulas ─────────────────────────────────────→ pop_solver  [1: Object]
+emitir_base → ruido_turbulencia → punta_dispersa → pop_solver  [3: Sources]
+
+ground_plane ─┐  (izquierda)
+pop_solver ───┴→ merge1 → fuerza_vortex → gravity1 → output
+                              ↑ [2]
+                          curva_eje</pre></div>
+    <div class="note warn"><strong>Los dos errores típicos</strong><ul>
+      <li><strong>El ground plane va a la izquierda del merge.</strong> En DOPs lo de la izquierda afecta a lo de la derecha. Si lo pones a la derecha, las partículas atraviesan el piso.</li>
+      <li><strong>El Vortex Force va después del merge</strong>, en la cadena de objetos como la gravedad, no en la cadena de POPs. No es una fuerza POP, pero el POP Solver la respeta igual.</li></ul></div>
+    <div class="note check"><strong>Comprueba</strong>Dale <em>Play</em>. Desde el frame ~20 las partículas giran y suben; hacia el frame 100 ya hay un embudo de 45–50 m. Con el display en <code>fuerza_vortex</code> se ven los anillos guía de las órbitas.</div>
+  </section>
+
+  <section id="p8" data-step>
+    <header><span class="num">8</span><h2>Sacar las partículas a SOPs<span class="where">/obj/tornado_vortex</span></h2><label class="done-toggle"><input type="checkbox" id="done-p8">Hecho</label></header>
+    <p>Sal de <code>sim_tornado</code> con <kbd>U</kbd> y crea:</p>
+    <div class="tw"><table>
+      <tr><th>Nodo</th><th>Nombre</th><th>Parámetros</th></tr>
+      <tr><td>DOP Import</td><td><code>importar_particulas</code></td><td>DOP Network <code>/obj/tornado_vortex/sim_tornado</code>, Objects <code>particulas</code>, Import Style <em>Fetch Geometry from DOP Network</em></td></tr>
+      <tr><td>Attribute Wrangle</td><td><code>color_y_tamano</code></td><td>Debajo de <code>importar_particulas</code>. Código de abajo; slider <code>escala_render</code> <b>3</b></td></tr>
+      <tr><td>Merge</td><td><code>particulas_y_piso</code></td><td>Entrada 1: <code>color_y_tamano</code>; entrada 2: <code>color_piso</code></td></tr>
+      <tr><td>Null</td><td><code>OUT</code></td><td>Debajo del merge. <strong>Display flag aquí</strong></td></tr>
+    </table></div>
+<div class="code"><span class="tag">VEX · color_y_tamano</span><pre><code>// color por altura: polvo oscuro abajo, gris claro arriba
+float h = fit(@P.y, 0, 30, 0, 1);
+v@Cd = lerp({0.32,0.26,0.20}, {0.75,0.75,0.78}, h);
+// pscale viene de la simulacion (punta_dispersa); se agranda para Karma
+f@pscale *= chf("escala_render");</code></pre></div>
+    <p><code>escala_render</code> en 3 hace las partículas más gruesas para que se vean en Karma. Para OpenGL puedes dejarlo en 1.</p>
+    <div class="pair">
+      <figure class="shot"><button type="button"><img src="img/30_importar_particulas.png" alt="DOP Import importar_particulas" loading="lazy" width="820" height="464"></button><figcaption><code>importar_particulas</code>.</figcaption></figure>
+      <figure class="shot"><button type="button"><img src="img/31_color_y_tamano.png" alt="Attribute Wrangle color_y_tamano" loading="lazy" width="900" height="474"></button><figcaption><code>color_y_tamano</code>.</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="p9" data-step>
+    <header><span class="num">9</span><h2>Cámara y luces<span class="where">/obj</span></h2><label class="done-toggle"><input type="checkbox" id="done-p9">Hecho</label></header>
+    <div class="tw"><table>
+      <tr><th>Nodo</th><th>Nombre</th><th>Parámetros</th></tr>
+      <tr><td>Camera</td><td><code>cam_tornado</code></td><td>Translate <b>(0, 30, 135)</b>, Rotate X <b>−2</b>, Focal Length <b>35</b>, Resolution <b>1280 × 720</b></td></tr>
+      <tr><td>Distant Light</td><td><code>luz_sol</code></td><td>Rotate <b>(−50, 30, 0)</b></td></tr>
+      <tr><td>Environment Light</td><td><code>luz_ambiente</code></td><td>Intensity <b>0.35</b> (cielo azul suave)</td></tr>
+    </table></div>
+    <div class="pair">
+      <figure class="shot"><button type="button"><img src="img/40_camara.png" alt="Cámara, pestaña Transform" loading="lazy" width="820" height="322"></button><figcaption>Pestaña Transform.</figcaption></figure>
+      <figure class="shot"><button type="button"><img src="img/41_camara_lente.png" alt="Cámara, pestaña View" loading="lazy" width="820" height="340"></button><figcaption>Pestaña View.</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="p10" data-step>
+    <header><span class="num">10</span><h2>Render con Karma<span class="where">/out</span></h2><label class="done-toggle"><input type="checkbox" id="done-p10">Hecho</label></header>
+    <ol>
+      <li>En <code>/out</code>, <kbd>Tab</kbd> → <strong>Karma</strong>, nombre <code>karma_tornado</code>.</li>
+      <li>Valid Frame Range <em>Render Frame Range</em>, frames <b>1 a 168</b>. Camera <code>/obj/cam_tornado</code>, Resolution <b>1280 × 720</b>.</li>
+      <li>Output Picture: una carpeta tuya, p. ej. <code>$HIP/render/tornado_karma.$F4.jpg</code>.</li>
+      <li>Rendering Engine: <strong>CPU</strong> si tu equipo no tiene GPU NVIDIA; <strong>XPU</strong> si tienes una RTX (mucho más rápido).</li>
+      <li><strong>Render to Disk</strong>.</li>
+    </ol>
+    <figure class="shot"><button type="button"><img src="img/50_karma.png" alt="Parámetros del nodo Karma" loading="lazy" width="900" height="640"></button>
+      <figcaption>La ruta de Output Picture de la captura es la de otra computadora: cambia la ruta por una tuya.</figcaption></figure>
+    <p>Para armar el video con los frames (opcional, con ffmpeg):</p>
+<div class="code"><span class="tag">Terminal</span><pre><code>ffmpeg -framerate 24 -i tornado_karma.%04d.jpg -c:v libx264 -crf 23 -pix_fmt yuv420p tornado.mp4</code></pre></div>
+    <div class="note tip"><strong>Cuánto tarda</strong>En una laptop (CPU) cada frame tarda 6–13 s y va subiendo, porque hay más partículas. Con una RTX 4060 (XPU) baja a ~3.6 s por frame, aunque los primeros ~60 frames fueron lentos. 168 frames: ~23 min en XPU y ~32 min en CPU. Antes de un render largo, haz una prueba rápida con un ROP <strong>OpenGL</strong> con la misma cámara para revisar el encuadre.</div>
+  </section>
+
+  <section id="comprobar">
+    <header><h2>Cómo saber si te salió bien</h2></header>
+    <p>En el frame 192 deberías tener, más o menos:</p>
+    <ul>
+      <li><strong>~34 000 partículas</strong> vivas (Geometry Spreadsheet de <code>importar_particulas</code>).</li>
+      <li>Altura máxima de <strong>~50 m</strong>, sin un anillo o "tapa" arriba: la cantidad baja poco a poco con la altura.</li>
+      <li>Muchas partículas en la base (el polvo) y casi ninguna a más de 30 m del centro.</li>
+      <li>La columna se dobla y se mueve; la base se queda en su lugar.</li>
+    </ul>
+    <figure class="shot"><button type="button"><img src="img/resultado.jpg" alt="Render OpenGL del tornado en el frame 192" loading="lazy" width="1280" height="720"></button><figcaption>Frame 192, render OpenGL.</figcaption></figure>
+  </section>
+
+  <section id="problemas">
+    <header><h2>Si algo sale mal</h2></header>
+    <div class="tw"><table>
+      <tr><th>Síntoma</th><th>Causa probable</th><th>Solución</th></tr>
+      <tr><td>Giran pero no suben</td><td>El lift no les llega</td><td>Lift Radius Multiplier en 3. Con 1 casi ninguna partícula recibe el empuje</td></tr>
+      <tr><td>Salen disparadas al cielo</td><td><code>lift</code> muy alto o falta <code>punta_dispersa</code></td><td><code>lift</code> en 30 y revisa que <code>punta_dispersa</code> esté conectado</td></tr>
+      <tr><td>Se forma una tapa plana arriba</td><td>Todas mueren o se frenan a la misma altura</td><td><code>altura_min</code> y <code>altura_max</code> deben ser distintos (30 y 50)</td></tr>
+      <tr><td>Atraviesan el piso</td><td>Ground plane a la derecha del merge</td><td>Pásalo a la 1ª entrada (izquierda)</td></tr>
+      <tr><td>No nace ninguna partícula</td><td>Fuente mal conectada o ruta mal escrita</td><td><code>punta_dispersa</code> va a la 3ª entrada del solver; revisa la ruta a <code>emisor</code></td></tr>
+      <tr><td>La columna no se mueve</td><td><code>curva_eje</code> no lee la curva cada frame</td><td>Su <em>Time</em> debe ser <code>$T</code></td></tr>
+      <tr><td>El tornado se desarma</td><td>Ruido muy fuerte</td><td>Amplitude en 8. Con 15, la mitad se queda abajo o sale volando</td></tr>
+      <tr><td>Sliders en 0 o sin efecto</td><td>No se crearon los parámetros</td><td>Pulsa Create spare parameters y escribe los valores</td></tr>
+      <tr><td>Karma no muestra las partículas</td><td><code>pscale</code> muy chico</td><td>Sube <code>escala_render</code> en <code>color_y_tamano</code></td></tr>
+    </table></div>
+  </section>
+
+  <section id="entender">
+    <header><h2>Para entenderlo</h2></header>
+    <p>No hace falta para replicarlo, pero ayuda a modificarlo.</p>
+    <details><summary>¿Qué hace el Vortex Force?</summary><div><p>Hace orbitar las partículas alrededor de una curva. De cada punto lee el radio (<code>orbitrad</code>), la velocidad (<code>orbitvel</code>), el empuje hacia arriba (<code>orbitlift</code>) y el alcance (<code>orbitmaxd</code>). Por eso la forma del embudo se dibuja con una fórmula: cambia <code>radio_base</code>, <code>radio_tope</code> o <code>curvatura</code> y cambia la silueta.</p></div></details>
+    <details><summary>¿Por qué POP Force y no POP Wind?</summary><div><p>POP Wind funciona como viento: lleva la velocidad de las partículas hacia la del viento, y eso frenaría el giro. POP Force solo suma una aceleración, así que agrega ruido sin estorbar.</p></div></details>
+    <details><summary>¿Por qué cada partícula muere a una altura distinta?</summary><div><p>Si todas se frenaran a la misma altura, ahí se juntarían en una tapa, porque el lift y la gravedad se igualan. <code>rand(@id)</code> le da a cada partícula su propio límite, y la punta queda irregular.</p></div></details>
+    <details><summary>Variaciones para probar</summary><div><ul>
+      <li><strong>Tornado inclinado:</strong> cambia la dirección de <code>eje_tornado</code>, p. ej. (0.3, 1, 0).</li>
+      <li><strong>Más ancho o más delgado:</strong> <code>radio_base</code> y <code>radio_tope</code>.</li>
+      <li><strong>Más violento:</strong> sube <code>velocidad_orbita</code> y un poco la Amplitude del ruido.</li>
+      <li><strong>Más denso:</strong> sube Const. Birth Rate. Más partículas hacen más lenta la simulación y el render.</li></ul></div></details>
+  </section>
+
+  <footer>
+    Guía de Venttisca Etterna para la clase de Simulación. Versión en texto: <a href="https://github.com/Venttisca/Guias/tree/main/tornado-houdini">README en GitHub</a>.<br>Actualizada el 6 de octubre de 2026. Valores tomados de la escena <code>experimento de houdini 2 (tornado).hipnc</code>, Houdini 22.0.368 Apprentice. Documentación: <a href="https://www.sidefx.com/docs/houdini/nodes/dop/vortexforce.html">Vortex Force DOP</a> y <a href="https://www.sidefx.com/docs/houdini/nodes/dop/popforce.html">POP Force</a> (SideFX).
+  </footer>
+</main>
+</div>
+
+<dialog class="lb" id="lb" aria-label="Captura ampliada">
+  <button type="button" id="lb-close">Cerrar</button>
+  <img id="lb-img" alt="">
+  <p id="lb-cap"></p>
+</dialog>
+
+<script>
+(function(){
+  // Resaltado mínimo de VEX
+  var KW=/\b(float|vector|int|if|else|return)\b/g;
+  document.querySelectorAll('.code pre code').forEach(function(el){
+    if(el.closest('.code').querySelector('.tag').textContent.indexOf('VEX')<0) return;
+    var html=el.textContent.replace(/&/g,'&amp;').replace(/</g,'&lt;').split('\n').map(function(line){
+      var i=line.indexOf('//'), code=i>=0?line.slice(0,i):line, com=i>=0?line.slice(i):'';
+      code=code.replace(/("[^"]*")/g,'\u0001$1\u0002')
+        .replace(KW,'<span class="c-kw">$1</span>')
+        .replace(/\b(chf|fit01|fit|rand|noise|set|lerp|pow|normalize)(?=\()/g,'<span class="c-fn">$1</span>')
+        .replace(/(^|[^\w.@])(\d+\.?\d*)/g,'$1<span class="c-num">$2</span>')
+        .replace(/\u0001/g,'').replace(/\u0002/g,'');
+      return code+(com?'<span class="c-com">'+com+'</span>':'');
+    }).join('\n');
+    el.innerHTML=html;
+  });
+
+  // Botones de copiar
+  document.querySelectorAll('.code').forEach(function(box){
+    var b=document.createElement('button'); b.type='button'; b.className='copy'; b.textContent='Copiar';
+    b.addEventListener('click',function(){
+      var txt=box.querySelector('code').textContent;
+      var ok=function(){b.textContent='Copiado';setTimeout(function(){b.textContent='Copiar'},1500)};
+      var fallback=function(){var r=document.createRange();r.selectNodeContents(box.querySelector('code'));var s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent='Seleccionado: Ctrl+C';setTimeout(function(){b.textContent='Copiar'},2200)};
+      try{navigator.clipboard.writeText(txt).then(ok,fallback)}catch(e){fallback()}
+    });
+    box.appendChild(b);
+  });
+
+  // Ampliar capturas
+  var lb=document.getElementById('lb'), lbImg=document.getElementById('lb-img'), lbCap=document.getElementById('lb-cap');
+  document.querySelectorAll('figure.shot button').forEach(function(btn){
+    btn.setAttribute('aria-label','Ampliar captura');
+    btn.addEventListener('click',function(){
+      var img=btn.querySelector('img'), cap=btn.parentNode.querySelector('figcaption');
+      lbImg.src=img.src; lbImg.alt=img.alt; lbCap.textContent=cap?cap.textContent:'';
+      if(lb.showModal) lb.showModal();
+    });
+  });
+  document.getElementById('lb-close').addEventListener('click',function(){lb.close()});
+  lb.addEventListener('click',function(e){if(e.target===lb||e.target===lbImg)lb.close()});
+
+  // Progreso por pasos (solo en este navegador)
+  var steps=[].slice.call(document.querySelectorAll('section[data-step]'));
+  var KEY='tornado-guia-hecho';
+  var saved={}; try{saved=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){}
+  function render(){
+    var n=0;
+    steps.forEach(function(s){
+      var on=s.querySelector('input').checked; s.classList.toggle('is-done',on); if(on)n++;
+      var a=document.querySelector('nav.toc a[href="#'+s.id+'"]'); if(a)a.classList.toggle('done',on);
+    });
+    document.getElementById('prog-txt').textContent=n+' de '+steps.length+' pasos';
+    document.getElementById('prog-bar').style.width=(100*n/steps.length)+'%';
+  }
+  steps.forEach(function(s){
+    var cb=s.querySelector('input'); cb.checked=!!saved[s.id];
+    cb.addEventListener('change',function(){saved[s.id]=cb.checked;try{localStorage.setItem(KEY,JSON.stringify(saved))}catch(e){}render()});
+  });
+  render();
+
+  // Paso actual en el índice
+  var links={}; document.querySelectorAll('nav.toc a').forEach(function(a){links[a.getAttribute('href').slice(1)]=a});
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){
+      Object.keys(links).forEach(function(k){links[k].classList.remove('on')});
+      var a=links[e.target.id]; if(a){a.classList.add('on'); if(a.scrollIntoView&&window.innerWidth<=900){var ol=a.closest('ol');ol.scrollTo({left:a.offsetLeft-16,behavior:'smooth'})}}
+    }})},{rootMargin:'-30% 0px -60% 0px'});
+    document.querySelectorAll('main section[id]').forEach(function(s){io.observe(s)});
+  }
+})();
+</script>
+
+</body>
+</html>
