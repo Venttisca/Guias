@@ -9,6 +9,7 @@ Cada guía tiene dos versiones: una página web (más cómoda, con capturas ampl
 | Guía | Página web | Texto |
 |---|---|---|
 | **Tornado de partículas**: un embudo con Vortex Force, ruido y render con Karma (Houdini 22) | [Abrir](https://venttisca.github.io/Guias/tornado-houdini/) | [README](tornado-houdini/README.md) |
+| **Portal de Dr. Strange**: anillo de chispas con mapa de ruido, chispas como líneas, piso con rebote y render con Karma XPU (Houdini 22) | [Abrir](https://venttisca.github.io/Guias/portal-dr-strange-houdini/) | [README](portal-dr-strange-houdini/README.md) |
 
 ## Licencia
 

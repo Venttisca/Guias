@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Portal de Dr. Strange en Houdini</title>
+<meta name="description" content="Guía paso a paso para replicar en Houdini 22 el portal de chispas de Doctor Strange: POPs, mapa de ruido, chispas como líneas, piso con rebote y render con Karma XPU.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+html{-webkit-text-size-adjust:100%}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+/* Layout: índice de pasos fijo a la izquierda en escritorio (chips arriba en móvil), una columna de lectura de ~46rem */
+:root{
+  --bg:#eef0f3; --surface:#ffffff; --sunken:#e3e7ec; --fg:#1b2129; --muted:#5b6573; --line:#cdd3db;
+  --accent:#9a5f1f; --accent-soft:#f3e4cf; --ok:#2f7a4a; --ok-soft:#dcefe2; --warn:#a2481d; --warn-soft:#f6e0d4;
+  --code-bg:#1d2229; --code-fg:#dde3ea; --code-com:#8792a0; --code-kw:#e2b36b; --code-fn:#9fc6e8; --code-num:#e9a07c;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --f-body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#14181d; --surface:#1c2128; --sunken:#232a32; --fg:#e4e8ed; --muted:#9aa4b1; --line:#323a44;
+  --accent:#e0a85e; --accent-soft:#3a2c1b; --ok:#7cc694; --ok-soft:#1d3226; --warn:#ee9a72; --warn-soft:#3b2419;
+  --code-bg:#0f1317; --code-fg:#dde3ea; --code-com:#7b8694; --code-kw:#e2b36b; --code-fn:#9fc6e8; --code-num:#e9a07c;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#14181d; --surface:#1c2128; --sunken:#232a32; --fg:#e4e8ed; --muted:#9aa4b1; --line:#323a44;
+  --accent:#e0a85e; --accent-soft:#3a2c1b; --ok:#7cc694; --ok-soft:#1d3226; --warn:#ee9a72; --warn-soft:#3b2419;
+  --code-bg:#0f1317; --code-fg:#dde3ea; --code-com:#7b8694; --code-kw:#e2b36b; --code-fn:#9fc6e8; --code-num:#e9a07c;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:4.5rem}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{background:var(--bg);color:var(--fg);font:1.03rem/1.62 var(--f-body);padding-inline:16px;padding-block:0 4rem}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+code{font-family:var(--f-mono);font-size:.86em;background:var(--sunken);padding:.08em .35em;border-radius:4px;overflow-wrap:anywhere}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15;margin:0}
+
+.shell{max-width:72rem;margin-inline:auto;display:grid;grid-template-columns:15rem minmax(0,1fr);gap:3rem}
+@media (max-width:900px){.shell{grid-template-columns:minmax(0,1fr);gap:0}}
+
+/* índice */
+nav.toc{position:sticky;top:env(safe-area-inset-top,0px);align-self:start;padding-block:2rem;max-height:100vh;overflow:auto}
+nav.toc .lbl{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 .6rem}
+nav.toc ol{list-style:none;margin:0;padding:0;display:grid;gap:.15rem}
+nav.toc a{display:flex;gap:.6rem;align-items:baseline;text-decoration:none;color:var(--muted);padding:.3rem .5rem;border-radius:6px;font-size:.92rem}
+nav.toc a:hover{background:var(--sunken);color:var(--fg)}
+nav.toc a.on{color:var(--fg);background:var(--sunken)}
+nav.toc a .n{font-family:var(--f-mono);font-size:.75rem;min-width:1.4rem;color:var(--accent)}
+nav.toc a.done .n::after{content:" ✓";color:var(--ok)}
+.progress{margin-top:1rem;font-size:.82rem;color:var(--muted)}
+.bar{height:6px;background:var(--sunken);border-radius:3px;overflow:hidden;margin-top:.35rem}
+.bar i{display:block;height:100%;width:0;background:var(--ok);transition:width .25s}
+@media (max-width:900px){
+  nav.toc{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:.6rem;margin-inline:-16px;padding-inline:16px;border-bottom:1px solid var(--line);max-height:none}
+  nav.toc .lbl,.progress{display:none}
+  nav.toc ol{display:flex;overflow-x:auto;gap:.3rem;scrollbar-width:none}
+  nav.toc a{white-space:nowrap;border:1px solid var(--line);font-size:.85rem}
+}
+
+main{min-width:0;max-width:46rem;padding-block:2.5rem}
+
+/* portada */
+.eyebrow{font-family:var(--f-mono);font-size:.78rem;color:var(--accent);letter-spacing:.04em;margin:0 0 .7rem}
+h1{font-size:clamp(2rem,5vw,3.1rem);font-weight:800;letter-spacing:-.02em}
+.lede{font-size:1.15rem;color:var(--muted);margin:.9rem 0 1.5rem;max-width:38rem}
+.hero-media{margin:0;border-radius:10px;overflow:hidden;background:#000;aspect-ratio:16/9;max-width:100%}
+.hero-media video,.hero-media img{width:100%;height:100%;object-fit:cover;display:block}
+.hero-cap{font-size:.85rem;color:var(--muted);margin:.5rem 0 0}
+.facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:1.5rem 0 0}
+.facts div{background:var(--surface);padding:.7rem .85rem}
+.facts dt{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.facts dd{margin:.15rem 0 0;font-family:var(--f-display);font-weight:700;font-size:1.1rem;font-variant-numeric:tabular-nums}
+@media (max-width:560px){.facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.summary{margin:2rem 0 0;padding:1.1rem 1.25rem;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.summary h2{font-size:1.05rem;margin-bottom:.5rem}
+.summary ol{margin:0;padding-left:1.2rem;display:grid;gap:.3rem}
+
+/* secciones */
+section{padding-top:3rem}
+section > header{display:flex;gap:.9rem;align-items:flex-start;margin-bottom:1rem}
+.num{flex:none;font-family:var(--f-display);font-weight:800;font-size:1.05rem;width:2.3rem;height:2.3rem;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-variant-numeric:tabular-nums}
+section h2{font-size:1.55rem;font-weight:700;letter-spacing:-.01em;padding-top:.25rem}
+.where{display:block;font-family:var(--f-mono);font-size:.78rem;color:var(--muted);font-weight:400;margin-top:.3rem;letter-spacing:0}
+.done-toggle{margin-left:auto;flex:none;display:flex;align-items:center;gap:.4rem;font-size:.82rem;color:var(--muted);cursor:pointer;padding:.3rem .55rem;border:1px solid var(--line);border-radius:999px;user-select:none;margin-top:.2rem}
+.done-toggle input{accent-color:var(--ok);margin:0}
+section.is-done .done-toggle{color:var(--ok);border-color:var(--ok);background:var(--ok-soft)}
+p,ul,ol{margin:.7rem 0}
+li{margin:.2rem 0}
+
+/* tablas */
+.tw{overflow-x:auto;margin:1rem 0;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.93rem}
+th,td{text-align:left;padding:.5rem .75rem;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+th{font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;background:var(--sunken)}
+td b{font-variant-numeric:tabular-nums}
+td:first-child{white-space:nowrap}
+
+/* código */
+.code{position:relative;margin:1rem 0;border-radius:8px;background:var(--code-bg);color:var(--code-fg)}
+.code .tag{position:absolute;top:.45rem;left:.8rem;font-family:var(--f-mono);font-size:.7rem;color:var(--code-com);letter-spacing:.06em;text-transform:uppercase}
+.code pre{margin:0;padding:2rem 1rem 1rem;overflow-x:auto;font:.83rem/1.6 var(--f-mono);tab-size:2}
+.code pre code{background:none;padding:0;font-size:inherit;overflow-wrap:normal;color:inherit}
+.copy{position:absolute;top:.4rem;right:.45rem;font:600 .75rem var(--f-body);padding:.3rem .65rem;border-radius:5px;border:1px solid #3a434e;background:#262d36;color:#dde3ea;cursor:pointer}
+.copy:hover{background:#313a45}
+.c-com{color:var(--code-com);font-style:italic}.c-kw{color:var(--code-kw)}.c-fn{color:var(--code-fn)}.c-num{color:var(--code-num)}
+
+/* figuras */
+figure.shot{margin:1.1rem 0}
+figure.shot button{all:unset;cursor:zoom-in;display:block;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:#2a2a2a;max-width:100%}
+figure.shot img{display:block;width:100%;height:auto}
+figure.shot button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+figcaption{font-size:.86rem;color:var(--muted);margin-top:.45rem}
+.pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
+@media (max-width:700px){.pair{grid-template-columns:minmax(0,1fr)}}
+
+/* avisos */
+.note{margin:1.1rem 0;padding:.85rem 1rem;border-radius:8px;border:1px solid var(--line);background:var(--surface)}
+.note strong:first-child{display:block;font-family:var(--f-display);margin-bottom:.2rem}
+.note.check{border-color:var(--ok);background:var(--ok-soft)}
+.note.check strong:first-child{color:var(--ok)}
+.note.warn{border-color:var(--warn);background:var(--warn-soft)}
+.note.warn strong:first-child{color:var(--warn)}
+.note.tip strong:first-child{color:var(--accent)}
+.note ul{margin:.3rem 0 0;padding-left:1.1rem}
+
+.diagram{overflow-x:auto;margin:1rem 0;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.diagram pre{margin:0;padding:1rem;font:.8rem/1.5 var(--f-mono);color:var(--fg)}
+
+details{margin:.6rem 0;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+details summary{cursor:pointer;padding:.7rem 1rem;font-weight:700}
+details > div{padding:0 1rem .8rem}
+
+footer{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--line);font-size:.86rem;color:var(--muted)}
+
+dialog.lb{border:0;padding:0;background:transparent;max-width:96vw;max-height:94vh}
+dialog.lb::backdrop{background:rgba(8,10,13,.86)}
+dialog.lb img{display:block;max-width:96vw;max-height:88vh;width:auto;height:auto;border-radius:6px}
+dialog.lb p{color:#dde3ea;font-size:.88rem;margin:.5rem 0 0;max-width:60rem}
+dialog.lb button{position:fixed;top:12px;right:12px;font:600 .9rem var(--f-body);background:#262d36;color:#fff;border:1px solid #444;border-radius:6px;padding:.4rem .8rem;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div class="shell">
+<nav class="toc" aria-label="Pasos">
+  <p class="lbl">Pasos</p>
+  <ol id="toc">
+    <li><a href="#antes"><span class="n">·</span>Antes de empezar</a></li>
+    <li><a href="#mapa"><span class="n">·</span>Mapa de nodos</a></li>
+    <li><a href="#p1"><span class="n">1</span>El objeto contenedor</a></li>
+    <li><a href="#p2"><span class="n">2</span>El anillo emisor</a></li>
+    <li><a href="#p3"><span class="n">3</span>El mapa de ruido</a></li>
+    <li><a href="#p4"><span class="n">4</span>La velocidad inicial de las chispas</a></li>
+    <li><a href="#p5"><span class="n">5</span>El hueco del centro</a></li>
+    <li><a href="#p6"><span class="n">6</span>La simulación de chispas</a></li>
+    <li><a href="#p7"><span class="n">7</span>Sacar las chispas a SOPs, color y líneas</a></li>
+    <li><a href="#p8"><span class="n">8</span>Revisar el movimiento</a></li>
+    <li><a href="#p9"><span class="n">9</span>Look</a></li>
+    <li><a href="#p10"><span class="n">10</span>Materiales</a></li>
+    <li><a href="#p11"><span class="n">11</span>Render con Karma</a></li>
+    <li><a href="#comprobar"><span class="n">·</span>¿Salió bien?</a></li>
+    <li><a href="#problemas"><span class="n">·</span>Si algo sale mal</a></li>
+    <li><a href="#entender"><span class="n">·</span>Para entenderlo</a></li>
+    <li><a href="#variaciones"><span class="n">·</span>Variaciones</a></li>
+  </ol>
+  <div class="progress"><span id="prog-txt">0 de 11 pasos</span><div class="bar"><i id="prog-bar"></i></div></div>
+</nav>
+
+<main>
+  <p class="eyebrow">Houdini 22.0 · POPs + Attribute Noise · Karma XPU · MaterialX</p>
+  <h1>Portal de Dr. Strange en Houdini</h1>
+  <p class="lede">Paso a paso para construir el portal del <em>sling ring</em>: un anillo de chispas que nace pequeño, crece, se deforma con un mapa de ruido y lanza chispas naranjas en forma de rayas que rebotan en el piso. Se renderiza con Karma.</p>
+
+  <figure class="hero-media">
+    <video src="img/karma.mp4" poster="img/resultado.jpg" autoplay muted loop playsinline controls aria-label="Render del portal con Karma"></video>
+  </figure>
+  <p class="hero-cap">Frames 1–240 (10 s a 24 fps), Karma XPU, 1280 × 720, sin composición. La marca de agua es de la licencia Apprentice.</p>
+
+  <dl class="facts">
+    <div><dt>Radio</dt><dd>2 m</dd></div>
+    <div><dt>Chispas</dt><dd>~2 300</dd></div>
+    <div><dt>Render</dt><dd>~5 s/frame</dd></div>
+    <div><dt>Armarlo</dt><dd>60–90 min</dd></div>
+  </dl>
+
+  <div class="summary">
+    <h2>La idea en cinco líneas</h2>
+    <ol>
+      <li>Un <strong>círculo</strong> crece y se abre. Un <strong>mapa de ruido 3D</strong> deforma su borde para que no sea un círculo perfecto.</li>
+      <li>Cada punto del círculo recibe una <strong>velocidad tangencial</strong>, que barre el borde y sale hacia afuera.</li>
+      <li>Un <strong>POP Network</strong> suelta chispas, las hace girar, las frena y les aplica gravedad. Una <strong>fuerza Metaball</strong> limpia el hueco y un <strong>Ground Plane</strong> las hace rebotar.</li>
+      <li>Después de simular, cada chispa se vuelve una <strong>línea</strong> orientada por su velocidad. Con puntos parecería un fuego artificial.</li>
+      <li><strong>Look:</strong> chispas y anillo <strong>emisivos</strong> (MaterialX), una luz naranja para el piso y render en <strong>Karma XPU</strong>.</li>
+    </ol>
+  </div>
+
+  <div class="note warn"><strong>Regla de trabajo: no renderizar hasta que el movimiento esté bien</strong>Revisa la simulación con previews de <strong>OpenGL</strong> (paso 8) y pasa a Karma solo cuando el movimiento te convenza. Un render largo de algo que todavía está mal es tiempo perdido.</div>
+
+  <section id="antes">
+    <header><h2>Antes de empezar</h2></header>
+    <ul><li><strong>Versión:</strong> Houdini 22.0 Apprentice. Algunos nodos se llaman <code>::2.0</code> (POP Source, POP Solver, Attribute Noise); el menú Tab elige la versión nueva solo.</li><li><strong>Unidades:</strong> 1 unidad = 1 metro. El portal mide <strong>2 m de radio</strong> y está de pie en el plano <strong>XY</strong>, mirando hacia +Z, que es donde está la cámara.</li><li><strong>Animación:</strong> 24 fps, frames <strong>1 a 240</strong> (10 s). Se configura en <em>Global Animation Options</em>, el reloj abajo a la derecha.</li><li><strong>Cómo crear nodos:</strong> dentro de una red, pulsa <strong>Tab</strong> y escribe el nombre del nodo. Para entrar a un nodo, doble clic (o <strong>I</strong>); para salir, <strong>U</strong>.</li><li><strong>Renombra cada nodo</strong> con el nombre de la guía. Varias expresiones apuntan a los nodos por nombre (por ejemplo <code>ch(&quot;../anillo_emisor/radx&quot;)</code>).</li><li><strong>Flags:</strong> el <strong>display flag</strong> (azul) dice qué se ve en el viewport y el <strong>render flag</strong> (morado) qué se renderiza. En <code>/obj</code>, el display flag de un objeto también decide <strong>si Karma lo ve</strong>.</li></ul>
+    <div class="note tip"><strong>Los códigos VEX y sus sliders</strong>Los códigos usan <code>chf(&quot;nombre&quot;)</code> para que los valores sean <strong>sliders</strong>. Después de pegar el código en un Wrangle, pulsa el botón <strong>Create spare parameters</strong> (el cuadrito con un <code>+</code> a la derecha del cuadro de código). Aparecen los sliders en 0; luego escribe los valores de la tabla.</div>
+    <div class="note tip"><strong>Expresiones</strong>Algunos parámetros llevan una <strong>expresión</strong> en vez de un número (por ejemplo <code>-$F * 4</code>). Escríbela tal cual en el campo; el campo se pone verde. <code>$F</code> es el frame actual y <code>$T</code> el tiempo en segundos.</div>
+  </section>
+
+  <section id="mapa">
+    <header><h2>Mapa de lo que vas a construir</h2></header>
+    <p>Dentro de <code>/obj/portal</code> (nivel SOP):</p>
+    <div class="diagram"><pre>anillo_emisor (Circle)
+  → normal_radial (Wrangle) → mapa_de_ruido (Attribute Noise) → desplazar_por_ruido (Wrangle) → OUT_anillo (Null)
+  → velocidad_tangencial (Wrangle) → OUT_emisor (Null)          ┄┄ lo lee fuente_anillo
+hueco_metaball (Metaball)                                        ┄┄ lo lee la fuerza "hueco"
+chispas_sim (DOP Network)
+  ┄ importar_chispas (DOP Import) → color_por_edad (Wrangle) → estelas_lineas (Wrangle)
+        ├→ OUT_chispas (Null, display flag: preview)
+        └→ look_render (Wrangle) → RENDER_chispas (Null, render flag: Karma)</pre></div>
+    <p>Dentro de <code>chispas_sim</code> (nivel DOP):</p>
+    <div class="diagram"><pre>chispas (POP Object) ───────────────────────────────────────────────→ popsolver [entrada 1: Object]
+fuente_anillo → vida_aleatoria → giro_portal → hueco → frenado → gravedad_y_ruido → popsolver [entrada 3]
+
+piso (Ground Plane) ─┐ (izquierda)
+popsolver ───────────┴→ colisiones (Merge) → output</pre></div>
+    <p>En <code>/obj</code>: <code>portal</code>, <code>anillo_brillante</code> (copia el anillo deformado para la línea brillante), <code>piso</code>, <code>luz_portal</code> y <code>cam_preview</code>. En <code>/mat</code>, tres materiales; en <code>/out</code>, un ROP de OpenGL y uno de Karma.</p>
+    <p>Las flechas punteadas (┄) no son cables: el nodo lee la geometría por su <strong>SOP Path</strong>.</p>
+    <figure class="shot"><button type="button"><img src="img/01_red_portal.png" alt="La red dentro de /obj/portal, ordenada en cajas por etapa: 1. anillo, 2. mapa de ruido, 3. velocidad, 4. simulación, 5. color y líneas, 6. look para Karma. irregularidad (gris, arriba a la izquierda) es una prueba descartada que no se conecta; no hace falta crearla." loading="lazy" width="900" height="1000"></button><figcaption>La red dentro de <code>/obj/portal</code>, ordenada en cajas por etapa: 1. anillo, 2. mapa de ruido, 3. velocidad, 4. simulación, 5. color y líneas, 6. look para Karma. <code>irregularidad</code> (gris, arriba a la izquierda) es una prueba descartada que <strong>no</strong> se conecta; no hace falta crearla.</figcaption></figure>
+    <figure class="shot"><button type="button"><img src="img/02_red_chispas_sim.png" alt="La red dentro de chispas_sim. La fuente y las fuerzas van en cadena a la 3ª entrada del popsolver. El piso entra a la izquierda del merge colisiones." loading="lazy" width="1000" height="900"></button><figcaption>La red dentro de <code>chispas_sim</code>. La fuente y las fuerzas van en cadena a la <strong>3ª entrada</strong> del <code>popsolver</code>. El <code>piso</code> entra a la <strong>izquierda</strong> del merge <code>colisiones</code>.</figcaption></figure>
+    <figure class="shot"><button type="button"><img src="img/00_red_obj.png" alt="El nivel /obj terminado. MCP_CAM_CENTER y MCP_CAMERA los creó la herramienta de previews de Claude; no hacen falta." loading="lazy" width="1000" height="600"></button><figcaption>El nivel <code>/obj</code> terminado. <code>MCP_CAM_CENTER</code> y <code>MCP_CAMERA</code> los creó la herramienta de previews de Claude; no hacen falta.</figcaption></figure>
+  </section>
+
+  <section id="p1" data-step>
+    <header><span class="num">1</span><h2>El objeto contenedor</h2><label class="done-toggle"><input type="checkbox" id="done-p1">Hecho</label></header>
+    <ol><li>En <code>/obj</code>, <strong>Tab → Geometry</strong>. Llámalo <code>portal</code>.</li><li>Entra (doble clic). Los pasos 2 a 7 van adentro.</li></ol>
+  </section>
+
+  <section id="p2" data-step>
+    <header><span class="num">2</span><h2>El anillo emisor</h2><label class="done-toggle"><input type="checkbox" id="done-p2">Hecho</label></header>
+    <p>El círculo del que nacen las chispas. <strong>Crece</strong> de 0.24 m a 2 m en 2.5 s, arrancando rápido y frenando al final (<em>ease-out</em>). También <strong>se abre</strong> como un arco y <strong>gira</strong>.</p>
+    <div class="tw"><table>
+  <tr><th>Nodo</th><th>Nombre</th><th>Parámetros</th></tr>
+  <tr><td>Circle</td><td><code>anillo_emisor</code></td><td>Primitive Type <b>Polygon</b>, Orientation <b>XY Plane</b>, Divisions <b>360</b>, Arc Type <b>Open Arc</b></td></tr>
+</table></div>
+    <p>Expresiones (escríbelas en el campo):</p>
+    <div class="tw"><table>
+  <tr><th>Parámetro</th><th>Expresión</th><th>Qué hace</th></tr>
+  <tr><td>Radius (X)</td><td><code>2 * (0.12 + 0.88 * (1 - pow(1 - clamp(($F - 1) / 60, 0, 1), 3)))</code></td><td>Crece hasta 2 m en el frame 61 (curva cúbica <em>ease-out</em>)</td></tr>
+  <tr><td>Radius (Y)</td><td><code>ch(&quot;radx&quot;)</code></td><td>Igual que X</td></tr>
+  <tr><td>Arc Angles (2º campo)</td><td><code>fit($F, 1, 36, 1, 360)</code></td><td>El arco se abre de 0° a 360° en 1.5 s</td></tr>
+  <tr><td>Rotate (Z)</td><td><code>-$F * 4</code></td><td>El anillo gira 4° por frame</td></tr>
+</table></div>
+    <figure class="shot"><button type="button"><img src="img/10_anillo_emisor.png" alt="anillo_emisor en el frame 73. Los campos verdes tienen expresión; se ve su valor en ese frame (radio 2, arco 360°). Reverse se marca solo." loading="lazy" width="820" height="400"></button><figcaption><code>anillo_emisor</code> en el frame 73. Los campos verdes tienen expresión; se ve su valor en ese frame (radio 2, arco 360°). <em>Reverse</em> se marca solo.</figcaption></figure>
+  </section>
+
+  <section id="p3" data-step>
+    <header><span class="num">3</span><h2>El mapa de ruido (que no sea un círculo perfecto)</h2><label class="done-toggle"><input type="checkbox" id="done-p3">Hecho</label></header>
+    <p>El anillo atraviesa un <strong>campo de ruido 3D animado</strong> que empuja cada punto hacia afuera o hacia adentro. Así el portal parece que "lucha" por mantenerse circular.</p>
+    <ol><li>Debajo de <code>anillo_emisor</code>, <strong>Tab → Attribute Wrangle</strong>, nombre <code>normal_radial</code> (Run Over: <em>Points</em>):</li></ol>
+    <div class="code"><span class="tag">VEX · normal_radial</span><pre><code>// Normal hacia afuera del portal: el ruido empuja el borde hacia afuera o hacia adentro
+v@N = normalize(set(@P.x, @P.y, 0));</code></pre></div>
+    <figure class="shot"><button type="button"><img src="img/11_normal_radial.png" alt="11 normal radial" loading="lazy" width="820" height="330"></button></figure>
+    <ol><li>Debajo, <strong>Tab → Attribute Noise</strong>, nombre <code>mapa_de_ruido</code>:</li></ol>
+    <div class="tw"><table>
+  <tr><th>Sección</th><th>Parámetro</th><th>Valor</th></tr>
+  <tr><td>General</td><td>Attribute Names</td><td><b>Float</b>, <code>ruido</code></td></tr>
+  <tr><td>Noise Value</td><td>Range Values</td><td><b>Zero Centered</b></td></tr>
+  <tr><td></td><td>Amplitude</td><td><b>0.38</b> (m de deformación)</td></tr>
+  <tr><td>Noise Pattern</td><td>Noise Type</td><td><b>Simplex</b></td></tr>
+  <tr><td></td><td>Element Size</td><td><b>6.68</b> (tamaño de las manchas)</td></tr>
+  <tr><td></td><td>Offset (pulsa <b>xyz</b> para verlo por eje)</td><td>X <code>$T * 0.7</code>, Y <code>$T * -0.5</code>, Z 0: el mapa viaja</td></tr>
+  <tr><td>Animation</td><td>Animated</td><td>✔, Pulse Duration <b>1.5</b> (qué tan rápido cambia)</td></tr>
+  <tr><td>Fractal</td><td>Type</td><td><b>Standard (fBm)</b>, Max Octaves <b>3</b>, Roughness <b>0.45</b></td></tr>
+</table></div>
+    <figure class="shot"><button type="button"><img src="img/12_mapa_de_ruido.png" alt="mapa_de_ruido con Animation y Fractal abiertos." loading="lazy" width="820" height="1000"></button><figcaption><code>mapa_de_ruido</code> con <em>Animation</em> y <em>Fractal</em> abiertos.</figcaption></figure>
+    <ol><li>Debajo, <strong>Tab → Attribute Wrangle</strong>, nombre <code>desplazar_por_ruido</code>:</li></ol>
+    <div class="code"><span class="tag">VEX · desplazar_por_ruido</span><pre><code>// Empuja el borde por la normal radial segun el valor del mapa de ruido (en metros).
+// Se escala con el radio: un portal pequeno se deforma proporcionalmente igual.
+float escala = chf("../anillo_emisor/radx") / 2.0;
+@P += v@N * f@ruido * escala;</code></pre></div>
+    <figure class="shot"><button type="button"><img src="img/13_desplazar_por_ruido.png" alt="13 desplazar por ruido" loading="lazy" width="820" height="380"></button></figure>
+    <div class="note"><strong>¿Por qué un wrangle y no "Noise Along Vector"?</strong>El Attribute Noise tiene una opción para desplazar a lo largo de un vector, pero con un atributo <em>Float</em> no movió los puntos. El wrangle hace lo mismo y además escala la deformación con el radio, así que el portal pequeño no se deforma de más.</div>
+    <ol><li>Debajo, <strong>Tab → Null</strong>, nombre <code>OUT_anillo</code>. Es la salida del anillo deformado; la usan las chispas y la línea brillante.</li></ol>
+  </section>
+
+  <section id="p4" data-step>
+    <header><span class="num">4</span><h2>La velocidad inicial de las chispas</h2><label class="done-toggle"><input type="checkbox" id="done-p4">Hecho</label></header>
+    <p>Cada punto del anillo guarda una velocidad <code>v</code>. La <strong>POP Source</strong> la hereda y así las chispas nacen ya en movimiento: barren el borde (dirección tangente) y salen hacia afuera.</p>
+    <p>Debajo de <code>OUT_anillo</code>, <strong>Tab → Attribute Wrangle</strong>, nombre <code>velocidad_tangencial</code>:</p>
+    <div class="code"><span class="tag">VEX · velocidad_tangencial</span><pre><code>// Velocidad inicial de cada chispa: barre el borde del portal y sale hacia afuera
+vector eje = {0, 0, 1};                 // normal del portal
+vector r   = normalize(set(@P.x, @P.y, 0));
+float giro   = chf("vel_giro");         // a lo largo del borde
+float salida = chf("vel_salida");       // hacia afuera
+
+// Aleatoriedad por chispa: la mayoria normales, pocas muy rapidas (cola larga).
+// Asi el borde exterior no termina en un anillo parejo.
+float sem = @ptnum * 13.7 + @Frame * 7.1;
+float k = fit01(pow(rand(sem), chf("sesgo")), chf("vel_min"), chf("vel_max"));
+// Rafagas: el ruido a lo largo del anillo hace zonas con mas y menos fuerza
+float rafaga = fit(noise(set(@ptnum * 0.05, @Frame * 0.15, 0)), 0.3, 0.7, 0.6, 1.4);
+
+v@v = (cross(eje, r) * giro + r * salida) * k * rafaga;
+v@v += (rand(sem + 1) - 0.5) * chf("variacion");
+
+// Portal pequeno = chispas lentas: la velocidad crece con el radio (1 a 2 m)
+float escala_radio = chf("../anillo_emisor/radx") / 2.0;
+v@v *= escala_radio;</code></pre></div>
+    <p>Pulsa <strong>Create spare parameters</strong> y pon:</p>
+    <div class="tw"><table>
+  <tr><th>Slider</th><th>Valor</th><th>Qué controla</th></tr>
+  <tr><td>vel_giro</td><td><b>9</b></td><td>Velocidad a lo largo del borde (m/s)</td></tr>
+  <tr><td>vel_salida</td><td><b>3.5</b></td><td>Velocidad hacia afuera (m/s)</td></tr>
+  <tr><td>variacion</td><td><b>2</b></td><td>Ruido aleatorio en la dirección</td></tr>
+  <tr><td>sesgo</td><td><b>3</b></td><td>Más alto = menos chispas rápidas (la "cola larga")</td></tr>
+  <tr><td>vel_min / vel_max</td><td><b>0.6 / 2.2</b></td><td>Rango del multiplicador por chispa</td></tr>
+</table></div>
+    <figure class="shot"><button type="button"><img src="img/14_velocidad_tangencial.png" alt="14 velocidad tangencial" loading="lazy" width="820" height="760"></button></figure>
+    <p>Debajo, <strong>Tab → Null</strong>, nombre <code>OUT_emisor</code>.</p>
+  </section>
+
+  <section id="p5" data-step>
+    <header><span class="num">5</span><h2>El hueco del centro</h2><label class="done-toggle"><input type="checkbox" id="done-p5">Hecho</label></header>
+    <p>Una <strong>metaball</strong> del tamaño del hueco. No se ve; solo la usa la fuerza <code>hueco</code> (paso 6) para empujar hacia afuera las chispas que se acercan al centro. Es el truco que usó RISE FX en la película.</p>
+    <div class="tw"><table>
+  <tr><th>Nodo</th><th>Nombre</th><th>Parámetros</th></tr>
+  <tr><td>Metaball</td><td><code>hueco_metaball</code></td><td>Radius X, Y y Z: <code>ch(&quot;../anillo_emisor/radx&quot;) * 0.9</code> (crece con el portal). No se conecta a nada</td></tr>
+</table></div>
+    <figure class="shot"><button type="button"><img src="img/15_hueco_metaball.png" alt="15 hueco metaball" loading="lazy" width="820" height="420"></button></figure>
+  </section>
+
+  <section id="p6" data-step>
+    <header><span class="num">6</span><h2>La simulación de chispas</h2><label class="done-toggle"><input type="checkbox" id="done-p6">Hecho</label></header>
+    <ol><li><strong>Tab → DOP Network</strong>, nombre <code>chispas_sim</code>. Entra en él (puede traer un nodo <code>output</code>; déjalo).</li><li>Crea estos nodos:</li></ol>
+    <div class="tw"><table>
+  <tr><th>Nodo</th><th>Nombre</th><th>Parámetros</th></tr>
+  <tr><td>POP Object</td><td><code>chispas</code></td><td>Pestaña <b>Physical</b>: Bounce <b>0.35</b>, Friction <b>0.5</b>, Dynamic Friction Scale <b>0.5</b></td></tr>
+  <tr><td>POP Source</td><td><code>fuente_anillo</code></td><td><b>Source:</b> Emission Type <b>Points</b>, SOP <code>../../OUT_emisor</code>. <b>Birth:</b> Const. Activation 1, Const. Birth Rate <b>2500</b>, Life Expectancy <b>0.9</b>, Life Variance <b>0.6</b>. <b>Attributes:</b> Initial Velocity <b>Use inherited velocity</b>, Inherit Velocity <b>1</b></td></tr>
+  <tr><td>POP Wrangle</td><td><code>vida_aleatoria</code></td><td>Código abajo</td></tr>
+  <tr><td>POP Axis Force</td><td><code>giro_portal</code></td><td>Shape <b>Sphere</b>, Center (0, 0, 0), Axis (0, 0, <b>1</b>), Radius <code>ch(&quot;../../anillo_emisor/radx&quot;) * 1.3</code>. Pestaña <b>Speed:</b> Orbit Speed <code>1.5 * ch(&quot;../../anillo_emisor/radx&quot;) / 2</code>, Lift 0, Suction 0</td></tr>
+  <tr><td>POP Metaball Force</td><td><code>hueco</code></td><td>Geometry Source <b>SOP</b>, SOP Path <code>../../hueco_metaball</code>, Force Scale <b>30</b></td></tr>
+  <tr><td>POP Drag</td><td><code>frenado</code></td><td>Air Resistance <b>0.3</b></td></tr>
+  <tr><td>POP Force</td><td><code>gravedad_y_ruido</code></td><td>Force (0, <b>-2</b>, 0). Pestaña <b>Noise:</b> Amplitude <b>1.5</b>, Swirl Size <b>0.5</b></td></tr>
+  <tr><td>POP Solver</td><td><code>popsolver</code></td><td>Por defecto</td></tr>
+  <tr><td>Ground Plane</td><td><code>piso</code></td><td>Center Y <b>-2.6</b>. Pestaña <b>Physical:</b> Bounce <b>0.35</b>, Friction <b>0.5</b>, Dynamic Friction Scale <b>0.5</b></td></tr>
+  <tr><td>Merge</td><td><code>colisiones</code></td><td>Por defecto (relación <em>Collide</em>)</td></tr>
+</table></div>
+    <p>Código de <code>vida_aleatoria</code>:</p>
+    <div class="code"><span class="tag">VEX · vida_aleatoria</span><pre><code>// Una sola vez por chispa: vida con cola larga para que no mueran todas a la misma distancia
+if (i@vida_ok == 0) {
+    float u = rand(i@id * 3.17 + 0.5);
+    f@life *= fit01(pow(u, 2.5), 0.5, 2.4);
+    f@brillo = fit01(rand(i@id * 1.91), 0.55, 1.25);
+    i@vida_ok = 1;
+}</code></pre></div>
+    <ol><li><strong>Conexiones:</strong><ul><li><code>fuente_anillo</code> → <code>vida_aleatoria</code> → <code>giro_portal</code> → <code>hueco</code> → <code>frenado</code> → <code>gravedad_y_ruido</code> → <strong>3ª entrada</strong> del <code>popsolver</code>.</li><li><code>chispas</code> → <strong>1ª entrada</strong> del <code>popsolver</code>.</li><li><code>piso</code> → <strong>1ª entrada</strong> (izquierda) de <code>colisiones</code>; <code>popsolver</code> → <strong>2ª entrada</strong>.</li><li><code>colisiones</code> → <code>output</code>. Pon el <strong>display flag</strong> en <code>output</code>.</li></ul></li></ol>
+    <figure class="shot"><button type="button"><img src="img/20_fuente_anillo_source.png" alt="fuente_anillo, pestaña Source: emite desde los puntos de OUT_emisor." loading="lazy" width="820" height="470"></button><figcaption><code>fuente_anillo</code>, pestaña Source: emite desde los puntos de <code>OUT_emisor</code>.</figcaption></figure>
+    <figure class="shot"><button type="button"><img src="img/21_fuente_anillo_birth.png" alt="Pestaña Birth: 2500 chispas por segundo, vida 0.9 ± 0.6 s." loading="lazy" width="820" height="470"></button><figcaption>Pestaña Birth: 2500 chispas por segundo, vida 0.9 ± 0.6 s.</figcaption></figure>
+    <figure class="shot"><button type="button"><img src="img/22_fuente_anillo_attributes.png" alt="Pestaña Attributes: Use inherited velocity. Sin esto, la velocidad del paso 4 no sirve de nada." loading="lazy" width="820" height="470"></button><figcaption>Pestaña Attributes: <strong>Use inherited velocity</strong>. Sin esto, la velocidad del paso 4 no sirve de nada.</figcaption></figure>
+    <figure class="shot"><button type="button"><img src="img/23_vida_aleatoria.png" alt="23 vida aleatoria" loading="lazy" width="820" height="420"></button></figure>
+    <figure class="shot"><button type="button"><img src="img/24_giro_portal.png" alt="giro_portal: el eje es Z porque el portal está de pie mirando a la cámara." loading="lazy" width="820" height="640"></button><figcaption><code>giro_portal</code>: el eje es Z porque el portal está de pie mirando a la cámara.</figcaption></figure>
+    <figure class="shot"><button type="button"><img src="img/25_hueco_metaball_force.png" alt="25 hueco metaball force" loading="lazy" width="820" height="330"></button></figure>
+    <figure class="shot"><button type="button"><img src="img/26_frenado.png" alt="Drag bajo (0.3). Con mucho drag las chispas se frenan y, en el paso 7, sus líneas se encogen a puntos." loading="lazy" width="820" height="330"></button><figcaption>Drag bajo (0.3). Con mucho drag las chispas se frenan y, en el paso 7, sus líneas se encogen a puntos.</figcaption></figure>
+    <figure class="shot"><button type="button"><img src="img/27_gravedad_y_ruido.png" alt="27 gravedad y ruido" loading="lazy" width="820" height="520"></button></figure>
+    <figure class="shot"><button type="button"><img src="img/28_chispas_popobject.png" alt="chispas (POP Object), pestaña Physical: el rebote se ajusta aquí y en el piso, porque los dos valores se combinan." loading="lazy" width="820" height="520"></button><figcaption><code>chispas</code> (POP Object), pestaña Physical: el rebote se ajusta aquí <strong>y</strong> en el piso, porque los dos valores se combinan.</figcaption></figure>
+    <figure class="shot"><button type="button"><img src="img/29_piso_groundplane.png" alt="piso (Ground Plane): infinito y no se ve en el render; el piso visible es otro objeto (paso 9)." loading="lazy" width="820" height="520"></button><figcaption><code>piso</code> (Ground Plane): infinito y <strong>no se ve</strong> en el render; el piso visible es otro objeto (paso 9).</figcaption></figure>
+  </section>
+
+  <section id="p7" data-step>
+    <header><span class="num">7</span><h2>Sacar las chispas a SOPs, color y líneas</h2><label class="done-toggle"><input type="checkbox" id="done-p7">Hecho</label></header>
+    <p>Sal del DOP Network (<strong>U</strong>) y, en <code>/obj/portal</code>:</p>
+    <ol><li><strong>Tab → DOP Import</strong>, nombre <code>importar_chispas</code>: DOP Network <code>../chispas_sim</code>, Objects <code>chispas</code>, Import Style <strong>Fetch Geometry from DOP Network</strong>.</li></ol>
+    <figure class="shot"><button type="button"><img src="img/30_importar_chispas.png" alt="30 importar chispas" loading="lazy" width="820" height="400"></button></figure>
+    <ol><li>Debajo, <strong>Attribute Wrangle</strong> <code>color_por_edad</code>. El color depende de la edad de la chispa:</li></ol>
+    <div class="code"><span class="tag">VEX · color_por_edad</span><pre><code>// Color y tamano de cada chispa segun su edad (0 = nace, 1 = muere)
+float t = clamp(f@age / max(f@life, 1e-4), 0, 1);
+vector amarillo = {1.0, 0.75, 0.3};
+vector naranja  = {1.0, 0.3, 0.03};
+vector rojo     = {0.6, 0.05, 0.0};
+v@Cd = t &lt; 0.12 ? lerp(amarillo, naranja, t / 0.12)
+     : t &lt; 0.55 ? naranja
+     : lerp(naranja, rojo, (t - 0.55) / 0.45);
+v@Cd *= f@brillo;   // cada chispa con su propio brillo
+f@pscale = 0.012 * (1 - t);
+f@Alpha = 1 - t * t;</code></pre></div>
+    <figure class="shot"><button type="button"><img src="img/31_color_por_edad.png" alt="31 color por edad" loading="lazy" width="820" height="600"></button></figure>
+    <ol><li>Debajo, <strong>Attribute Wrangle</strong> <code>estelas_lineas</code>. <strong>La clave del look:</strong> cada partícula se vuelve una línea corta hacia atrás, según su velocidad.</li></ol>
+    <div class="code"><span class="tag">VEX · estelas_lineas</span><pre><code>// Convierte cada chispa en una linea: de su posicion hacia atras, segun su velocidad.
+// Asi se ve como una chispa (raya por la velocidad) y no como un punto de fuego artificial.
+float largo = chf("largo_seg");                 // segundos de recorrido que muestra la estela
+float vmin  = chf("largo_min");                 // largo minimo en metros
+vector dir = v@v * largo;
+if (length(dir) &lt; vmin) dir = normalize(v@v + {0,1e-5,0}) * vmin;
+int cola = addpoint(0, @P - dir);
+setpointattrib(0, "Cd", cola, v@Cd * chf("brillo_cola"));
+setpointattrib(0, "Alpha", cola, 0.0);
+setpointattrib(0, "pscale", cola, f@pscale * 0.3);
+addprim(0, "polyline", @ptnum, cola);</code></pre></div>
+    <p>Sliders: <strong>largo_seg 0.07</strong>, <strong>largo_min 0.12</strong>, <strong>brillo_cola 0.15</strong>.</p>
+    <figure class="shot"><button type="button"><img src="img/32_estelas_lineas.png" alt="32 estelas lineas" loading="lazy" width="820" height="640"></button></figure>
+    <ol><li>Debajo, <strong>Null</strong> <code>OUT_chispas</code> con el <strong>display flag</strong>.</li></ol>
+    <div class="note check"><strong>Comprueba</strong>Ve al frame 73. Deberías ver un anillo de ~2 m con rayas naranjas que salen girando y un centro limpio. En el <em>Geometry Spreadsheet</em> de <code>importar_chispas</code> hay ~2300 puntos. Si no pasa nada, revisa las conexiones del solver y el SOP Path de <code>fuente_anillo</code>.</div>
+  </section>
+
+  <section id="p8" data-step>
+    <header><span class="num">8</span><h2>Revisar el movimiento (OpenGL)</h2><label class="done-toggle"><input type="checkbox" id="done-p8">Hecho</label></header>
+    <ol><li>En <code>/obj</code>, <strong>Tab → Camera</strong>, nombre <code>cam_preview</code>: Translate (0, 0, <strong>16</strong>), Resolution <strong>1280 × 720</strong> (focal 50, por defecto).</li></ol>
+    <figure class="shot"><button type="button"><img src="img/45_cam_preview.png" alt="45 cam preview" loading="lazy" width="820" height="520"></button></figure>
+    <ol><li>En <code>/out</code>, <strong>Tab → OpenGL</strong>, nombre <code>preview_opengl</code>: Camera <code>/obj/cam_preview</code>, Valid Frame Range <strong>Render Frame Range</strong> de 1 a 240, Override Camera Resolution ✔ 1280 × 720, Output Picture <code>$HIP/render/preview_opengl/portal_$F3.jpg</code>. <strong>Render</strong>.</li></ol>
+    <figure class="shot"><button type="button"><img src="img/51_preview_opengl.png" alt="51 preview opengl" loading="lazy" width="820" height="640"></button></figure>
+    <ol><li>Arma el video y revísalo (opcional, con ffmpeg):</li></ol>
+    <div class="code"><span class="tag">Terminal</span><pre><code>ffmpeg -framerate 24 -i portal_%03d.jpg -c:v libx264 -crf 18 -pix_fmt yuv420p preview.mp4</code></pre></div>
+    <p>Tarda ~10 s para los 240 frames. <strong>Ajusta la simulación hasta que el movimiento te guste</strong> y solo entonces sigue con el look.</p>
+    <div class="note tip"><strong>Reset Simulation</strong>Si cambias un parámetro del POP y no ves el cambio, entra a <code>chispas_sim</code> y pulsa <strong>Reset Simulation</strong> (o cambia de frame al 1). Si no, se ve la caché vieja.</div>
+  </section>
+
+  <section id="p9" data-step>
+    <header><span class="num">9</span><h2>Look (anillo brillante, piso y luz)</h2><label class="done-toggle"><input type="checkbox" id="done-p9">Hecho</label></header>
+    <ol><li><strong>Chispas para render.</strong> En <code>/obj/portal</code>, debajo de <code>estelas_lineas</code> (en paralelo a <code>OUT_chispas</code>), <strong>Attribute Wrangle</strong> <code>look_render</code>:</li></ol>
+    <div class="code"><span class="tag">VEX · look_render</span><pre><code>// Look para Karma: color HDR (emision) y grosor de las curvas
+float a = f@Alpha;
+v@Cd *= chf("intensidad") * a;          // la cola (Alpha 0) queda negra = se desvanece
+f@width = max(f@pscale, 0.0005) * chf("grosor");</code></pre></div>
+    <p>Sliders: <strong>intensidad 3.5</strong>, <strong>grosor 0.6</strong>. Debajo, <strong>Null</strong> <code>RENDER_chispas</code> con el <strong>render flag</strong> (morado). El display flag se queda en <code>OUT_chispas</code>.</p>
+    <figure class="shot"><button type="button"><img src="img/33_look_render.png" alt="33 look render" loading="lazy" width="820" height="480"></button></figure>
+    <ol><li><strong>Anillo brillante.</strong> En <code>/obj</code>, <strong>Tab → Geometry</strong> <code>anillo_brillante</code>. Adentro:<ul><li><strong>Object Merge</strong> <code>traer_anillo</code>: Object 1 <code>/obj/portal/OUT_anillo</code>.</li><li><strong>Attribute Wrangle</strong> <code>look_anillo</code>, con Run Over <strong>Detail (only once)</strong>. Rehace el borde como 6 hebras con ruido, para que se vea deshilachado y no como una línea limpia:</li></ul></li></ol>
+    <div class="code"><span class="tag">VEX · look_anillo</span><pre><code>// Anillo deshilachado: varias hebras alrededor del borde, cada una con ruido propio
+int hebras = chi("hebras");
+int npts = npoints(0);
+for (int h = 0; h &lt; hebras; h++) {
+    int prev = -1;
+    for (int i = 0; i &lt; npts; i++) {
+        vector p = point(0, "P", i);
+        vector r = normalize(set(p.x, p.y, 0));
+        float n  = noise(set(i * 0.06, h * 3.1, @Time * 5));
+        float n2 = noise(set(i * 0.7, h * 7.7, @Time * 12));
+        vector q = p + r * (n2 - 0.5) * chf("deshilachado") + {0,0,1} * (n - 0.5) * 0.05;
+        int pt = addpoint(0, q);
+        float b = h == 0 ? 1.0 : fit01(rand(h * 4.3), 0.25, 0.7);   // hebra 0 = nucleo
+        vector c = lerp({1.0, 0.42, 0.08}, {1.0, 0.72, 0.32}, b);
+        setpointattrib(0, "Cd", pt, c * fit(n, 0.3, 0.7, 1.5, 4) * b);
+        setpointattrib(0, "width", pt, (h == 0 ? 0.014 : 0.006) * fit(n2, 0.3, 0.7, 0.6, 1.4));
+        if (prev &gt;= 0) addprim(0, "polyline", prev, pt);
+        prev = pt;
+    }
+}
+// quita el circulo original y sus puntos (solo quedan las hebras)
+removeprim(0, 0, 0);
+for (int i = 0; i &lt; npts; i++) removepoint(0, i);</code></pre></div>
+    <p>Sliders: <strong>hebras 6</strong>, <strong>deshilachado 0.3</strong>.</p>
+    <ul><ul><li><strong>Null</strong> <code>RENDER_anillo</code> con display y render flag.</li></ul></li></ul>
+    <figure class="shot"><button type="button"><img src="img/03_red_anillo_brillante.png" alt="03 red anillo brillante" loading="lazy" width="700" height="500"></button></figure>
+    <figure class="shot"><button type="button"><img src="img/40_traer_anillo.png" alt="40 traer anillo" loading="lazy" width="820" height="380"></button></figure>
+    <figure class="shot"><button type="button"><img src="img/41_look_anillo.png" alt="41 look anillo" loading="lazy" width="820" height="760"></button></figure>
+    <ol><li><strong>Piso visible.</strong> En <code>/obj</code>, <strong>Tab → Geometry</strong> <code>piso</code>; adentro, un <strong>Grid</strong> de <strong>300 × 300</strong> con Center Y <strong>-2.6</strong>. Déjale el <strong>display flag encendido</strong>: si lo apagas, Karma no lo renderiza.</li><li><strong>Luz.</strong> En <code>/obj</code>, <strong>Tab → Point Light</strong>, nombre <code>luz_portal</code>: Translate (0, <strong>-1.7</strong>, <strong>0.3</strong>), Color (<strong>1, 0.4, 0.1</strong>), Exposure <strong>4.5</strong>, Intensity <code>(1 - pow(1 - clamp(($F - 1) / 60, 0, 1), 3))</code> (crece con el portal). Las chispas son tan delgadas que casi no iluminan el piso; esta luz lo simula.</li></ol>
+    <figure class="shot"><button type="button"><img src="img/44_luz_portal.png" alt="44 luz portal" loading="lazy" width="820" height="640"></button></figure>
+  </section>
+
+  <section id="p10" data-step>
+    <header><span class="num">10</span><h2>Materiales (MaterialX)</h2><label class="done-toggle"><input type="checkbox" id="done-p10">Hecho</label></header>
+    <ol><li>En <code>/mat</code>, <strong>Tab → Karma Material Builder</strong>, tres veces: <code>chispas_emisivo</code>, <code>anillo_emisivo</code> y <code>piso_oscuro</code>.</li><li>En <code>chispas_emisivo</code> y <code>anillo_emisivo</code>, entra y:<ul><li>En <code>mtlxstandard_surface</code>: Base <strong>0</strong>, Specular <strong>0</strong>, Emission <strong>1</strong>.</li><li><strong>Tab → MtlX Geometry Property Value</strong>, nombre <code>color_Cd</code>: Signature <strong>Vector 3</strong>, Geomprop <strong><code>displayColor</code></strong>. Conecta su salida a <strong>emission_color</strong> del <code>mtlxstandard_surface</code>.</li></ul></li><li>En <code>piso_oscuro</code>, en <code>mtlxstandard_surface</code>: Base Color (<strong>0.12, 0.1, 0.09</strong>), Specular <strong>0.5</strong>, Specular Roughness <strong>0.55</strong>.</li><li>Asigna cada material en la pestaña <strong>Render → Material</strong> del objeto: <code>portal</code> → <code>/mat/chispas_emisivo</code>, <code>anillo_brillante</code> → <code>/mat/anillo_emisivo</code>, <code>piso</code> → <code>/mat/piso_oscuro</code>.</li></ol>
+    <figure class="shot"><button type="button"><img src="img/04_red_material.png" alt="Dentro de chispas_emisivo: color_Cd → emission_color del Standard Surface." loading="lazy" width="1000" height="600"></button><figcaption>Dentro de <code>chispas_emisivo</code>: <code>color_Cd</code> → <em>emission_color</em> del Standard Surface.</figcaption></figure>
+    <figure class="shot"><button type="button"><img src="img/43_color_Cd.png" alt="43 color Cd" loading="lazy" width="820" height="300"></button></figure>
+    <div class="note warn"><strong><code>displayColor</code>, no <code>Cd</code></strong>Al pasar a USD (Karma), el color <code>Cd</code> de SOPs se llama <strong><code>displayColor</code></strong>. Si pones <code>Cd</code> en Geomprop, las chispas salen negras.</div>
+  </section>
+
+  <section id="p11" data-step>
+    <header><span class="num">11</span><h2>Render con Karma</h2><label class="done-toggle"><input type="checkbox" id="done-p11">Hecho</label></header>
+    <ol><li>En <code>/out</code>, <strong>Tab → Karma</strong>, nombre <code>karma_look</code>: Camera <code>/obj/cam_preview</code>, Resolution <strong>1280 × 720</strong>, Rendering Engine <strong>XPU</strong> (CPU si no tienes NVIDIA RTX), Path Traced Samples <strong>256</strong>, Output Picture <code>$HIP/render/karma/portal.$F4.exr</code>.</li><li>Pestaña <strong>Rendering → Camera Effects:</strong> desactiva <strong>Motion Blur</strong>. La estela ya está hecha en la geometría (paso 7); con blur quedaría doble.</li><li>Pestaña <strong>Objects:</strong> Exclude Objects <code>MCP_*</code> (solo si tienes esas cámaras de Claude).</li><li>Prueba <strong>un solo frame</strong> (Start/End <strong>73 73</strong>) y revisa el look. Luego pon <strong>1 a 240</strong> y <em>Render to Disk</em>.</li></ol>
+    <figure class="shot"><button type="button"><img src="img/50_karma_look.png" alt="karma_look configurado para el frame de prueba (73). Para el render completo, Start/End 1 y 240." loading="lazy" width="820" height="880"></button><figcaption><code>karma_look</code> configurado para el frame de prueba (73). Para el render completo, Start/End 1 y 240.</figcaption></figure>
+    <p>Para renderizar sin abrir Houdini (en la Venator, con el script <code>render_karma.py</code>):</p>
+    <div class="code"><span class="tag">Terminal</span><pre><code>hython ../render_karma.py "experimento de houdini 5 (portal de dr strange).hipnc" --rop /out/karma_look --frames 1 240 --out render/karma_v1</code></pre></div>
+    <p>Para ver un EXR como PNG: <code>hoiiotool frame.exr --ch R,G,B --colorconvert linear sRGB -o frame.png</code>.</p>
+    <div class="note"><strong>Cuánto tarda</strong>Con una RTX 4060 (XPU) un frame tarda 6–14 s si es suelto (incluye simular hasta ese frame) y ~4–5 s dentro de una secuencia. Los 240 frames: ~20 min.</div>
+    <p>El <strong>glow</strong> de la referencia se agrega en composición (Nuke, COPs o After Effects), no en el render.</p>
+  </section>
+
+  <section id="comprobar">
+    <header><h2>Cómo sé que me salió bien</h2></header>
+    <p>En el frame 73 deberías tener, más o menos:</p>
+    <ul><li><strong>~2300 chispas</strong> vivas (<code>importar_chispas</code>) y el mismo número de líneas en <code>estelas_lineas</code>.</li><li>El borde del anillo entre <strong>1.9 y 2.15 m</strong> del centro: no es un círculo perfecto y la forma cambia con el tiempo.</li><li>El centro <strong>limpio</strong> y unas ~400–500 chispas sobre el piso (y = -2.6).</li><li>En Karma: chispas <strong>naranjas</strong> hacia afuera (no amarillas), un anillo amarillo deshilachado y un brillo naranja suave en el piso.</li></ul>
+  </section>
+
+  <section id="problemas">
+    <header><h2>Si algo sale mal</h2></header>
+    <div class="tw"><table>
+  <tr><th>Síntoma</th><th>Causa probable</th><th>Solución</th></tr>
+  <tr><td>Las chispas parecen <b>fuegos artificiales</b> (puntos)</td><td>Falta <code>estelas_lineas</code></td><td>Paso 7.3. Las chispas reales se ven como rayas</td></tr>
+  <tr><td>Las líneas parecen <b>pelo</b> pegado al anillo</td><td>Demasiadas chispas o demasiado drag</td><td>Birth Rate 2500, Air Resistance 0.3</td></tr>
+  <tr><td>Las chispas no se mueven al nacer</td><td>No heredan la velocidad</td><td><code>fuente_anillo</code> → Attributes → <b>Use inherited velocity</b></td></tr>
+  <tr><td>Chispas dentro del hueco</td><td>Fuerza <code>hueco</code> débil o metaball pequeña</td><td>Force Scale 30 y radio <code>radx × 0.9</code></td></tr>
+  <tr><td>Atraviesan el piso</td><td>Ground plane a la derecha del merge</td><td><code>piso</code> en la <b>1ª entrada</b> (izquierda) de <code>colisiones</code></td></tr>
+  <tr><td>Un "chorro" enorme al inicio</td><td>La velocidad no escala con el radio</td><td>Las últimas 2 líneas de <code>velocidad_tangencial</code></td></tr>
+  <tr><td>Las chispas salen <b>negras</b> en Karma</td><td>Geomprop <code>Cd</code></td><td>Usa <b><code>displayColor</code></b></td></tr>
+  <tr><td>Las chispas salen <b>amarillas</b> en Karma</td><td>El HDR satura el naranja</td><td>Colores más saturados e <code>intensidad</code> 3.5, no 6</td></tr>
+  <tr><td>El <b>piso no sale</b> en Karma</td><td>Display flag del objeto <code>piso</code> apagado</td><td>Enciéndelo: en <code>/obj</code> el display flag es la visibilidad</td></tr>
+  <tr><td>Reflejo vertical muy marcado en el piso</td><td>Piso muy liso</td><td>Specular Roughness 0.55</td></tr>
+  <tr><td>Cambio un valor y no pasa nada</td><td>Caché de la simulación</td><td><b>Reset Simulation</b> en <code>chispas_sim</code></td></tr>
+  <tr><td>No hay sliders / están en 0</td><td>No se crearon los parámetros</td><td><b>Create spare parameters</b> y escribe los valores</td></tr>
+  <tr><td><code>look_anillo</code> sale vacío</td><td>Borré el círculo con <code>removeprim(0, 0, 1)</code></td><td>Usa <code>removeprim(0, 0, 0)</code> y luego <code>removepoint</code> como en el código</td></tr>
+</table></div>
+  </section>
+
+  <section id="entender">
+    <header><h2>Para entenderlo</h2></header>
+    <ul><li><strong>Por qué líneas:</strong> una chispa real se mueve muy rápido y el ojo (o la cámara) ve su recorrido. <code>estelas_lineas</code> dibuja ese recorrido como un motion blur hecho en geometría. Así se ve desde el viewport y se controla el largo.</li><li><strong>Velocidad tangencial:</strong> <code>cross(eje, r)</code> da la dirección que "barre" el borde del círculo. Sumarle algo de <code>r</code> (hacia afuera) hace que salgan en espiral.</li><li><strong>Cola larga:</strong> con <code>pow(rand, 3)</code> la mayoría de las chispas tiene valores bajos y unas pocas valores altos. Así unas pocas vuelan lejos y el borde exterior se ve irregular, no como un anillo parejo.</li><li><strong>Mapa de ruido vs. fórmula:</strong> antes de usar el mapa de ruido se probaron deformaciones por ángulo (respiración, óvalo, temblor, abolladuras), y se veían demasiado matemáticas. Un ruido 3D que se mueve por el espacio se ve más orgánico.</li><li><strong>Fuerza Metaball:</strong> RISE FX la usó en la película para que las chispas no entraran al círculo. Un objeto de colisión en el centro funciona peor y no debe verse en el render.</li></ul>
+  </section>
+
+  <section id="variaciones">
+    <header><h2>Variaciones para probar</h2></header>
+    <ul><li><strong>Más caótico:</strong> sube <em>Amplitude</em> en <code>mapa_de_ruido</code> (0.5–0.6) o baja <em>Pulse Duration</em>.</li><li><strong>Más chispas lejanas:</strong> baja <code>sesgo</code> (2) o sube <code>vel_max</code>.</li><li><strong>Portal más grande:</strong> cambia el <code>2 *</code> de la expresión del radio (todo lo demás lo sigue).</li><li><strong>Sin piso:</strong> desactiva el <code>piso</code> (DOP) y el objeto <code>piso</code>; las chispas caen al vacío.</li><li><strong>Otro color (magia verde, azul):</strong> cambia los tres colores de <code>color_por_edad</code> y los del anillo en <code>look_anillo</code>.</li></ul>
+  </section>
+
+  <footer>
+    Guía de Venttisca Etterna para la clase de Simulación. Versión en texto: <a href="https://github.com/Venttisca/Guias/tree/main/portal-dr-strange-houdini">README en GitHub</a>.<br>Actualizada el 7 de octubre de 2026. Valores tomados de la escena <code>experimento de houdini 5 (portal de dr strange).hipnc</code>, Houdini 22.0.368 Apprentice. Referencias: <a href="https://www.sidefx.com/community/rise-fx-doctor-strange">RISE FX: Doctor Strange</a>, <a href="https://www.sidefx.com/forum/topic/58274/">hilo sobre la fuerza Metaball</a>, <a href="https://www.sidefx.com/tutorials/houdini-tutorial-2-doctor-strange-inspired-portals">Doctor Strange Inspired Portals</a> (Moeen Sayed) y la documentación de SideFX de <a href="https://www.sidefx.com/docs/houdini/nodes/dop/popsource.html">POP Source</a>, <a href="https://www.sidefx.com/docs/houdini/nodes/dop/popaxisforce.html">POP Axis Force</a>, <a href="https://www.sidefx.com/docs/houdini/nodes/dop/popmetaballforce.html">POP Metaball Force</a> y <a href="https://www.sidefx.com/docs/houdini/nodes/sop/attribnoise.html">Attribute Noise</a>.<br>© 2026 Venttisca Etterna. Bajo licencia <a href="https://creativecommons.org/licenses/by/4.0/deed.es">CC BY 4.0</a>: puedes compartirla y adaptarla dando crédito.
+  </footer>
+</main>
+</div>
+
+<dialog class="lb" id="lb" aria-label="Captura ampliada">
+  <button type="button" id="lb-close">Cerrar</button>
+  <img id="lb-img" alt="">
+  <p id="lb-cap"></p>
+</dialog>
+
+<script>
+(function(){
+  // Resaltado mínimo de VEX
+  var KW=/\b(float|vector|int|if|else|return|for)\b/g;
+  document.querySelectorAll('.code pre code').forEach(function(el){
+    if(el.closest('.code').querySelector('.tag').textContent.indexOf('VEX')<0) return;
+    var html=el.textContent.replace(/&/g,'&amp;').replace(/</g,'&lt;').split('\n').map(function(line){
+      var i=line.indexOf('//'), code=i>=0?line.slice(0,i):line, com=i>=0?line.slice(i):'';
+      code=code.replace(/("[^"]*")/g,'\u0001$1\u0002')
+        .replace(KW,'<span class="c-kw">$1</span>')
+        .replace(/\b(chf|chi|fit01|fit|rand|noise|set|lerp|pow|normalize|clamp|cross|max|length|addpoint|addprim|setpointattrib|point|npoints|removeprim|removepoint)(?=\()/g,'<span class="c-fn">$1</span>')
+        .replace(/(^|[^\w.@])(\d+\.?\d*)/g,'$1<span class="c-num">$2</span>')
+        .replace(/\u0001/g,'').replace(/\u0002/g,'');
+      return code+(com?'<span class="c-com">'+com+'</span>':'');
+    }).join('\n');
+    el.innerHTML=html;
+  });
+
+  // Botones de copiar
+  document.querySelectorAll('.code').forEach(function(box){
+    var b=document.createElement('button'); b.type='button'; b.className='copy'; b.textContent='Copiar';
+    b.addEventListener('click',function(){
+      var txt=box.querySelector('code').textContent;
+      var ok=function(){b.textContent='Copiado';setTimeout(function(){b.textContent='Copiar'},1500)};
+      var fallback=function(){var r=document.createRange();r.selectNodeContents(box.querySelector('code'));var s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent='Seleccionado: Ctrl+C';setTimeout(function(){b.textContent='Copiar'},2200)};
+      try{navigator.clipboard.writeText(txt).then(ok,fallback)}catch(e){fallback()}
+    });
+    box.appendChild(b);
+  });
+
+  // Ampliar capturas
+  var lb=document.getElementById('lb'), lbImg=document.getElementById('lb-img'), lbCap=document.getElementById('lb-cap');
+  document.querySelectorAll('figure.shot button').forEach(function(btn){
+    btn.setAttribute('aria-label','Ampliar captura');
+    btn.addEventListener('click',function(){
+      var img=btn.querySelector('img'), cap=btn.parentNode.querySelector('figcaption');
+      lbImg.src=img.src; lbImg.alt=img.alt; lbCap.textContent=cap?cap.textContent:'';
+      if(lb.showModal) lb.showModal();
+    });
+  });
+  document.getElementById('lb-close').addEventListener('click',function(){lb.close()});
+  lb.addEventListener('click',function(e){if(e.target===lb||e.target===lbImg)lb.close()});
+
+  // Progreso por pasos (solo en este navegador)
+  var steps=[].slice.call(document.querySelectorAll('section[data-step]'));
+  var KEY='portal-guia-hecho';
+  var saved={}; try{saved=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){}
+  function render(){
+    var n=0;
+    steps.forEach(function(s){
+      var on=s.querySelector('input').checked; s.classList.toggle('is-done',on); if(on)n++;
+      var a=document.querySelector('nav.toc a[href="#'+s.id+'"]'); if(a)a.classList.toggle('done',on);
+    });
+    document.getElementById('prog-txt').textContent=n+' de '+steps.length+' pasos';
+    document.getElementById('prog-bar').style.width=(100*n/steps.length)+'%';
+  }
+  steps.forEach(function(s){
+    var cb=s.querySelector('input'); cb.checked=!!saved[s.id];
+    cb.addEventListener('change',function(){saved[s.id]=cb.checked;try{localStorage.setItem(KEY,JSON.stringify(saved))}catch(e){}render()});
+  });
+  render();
+
+  // Paso actual en el índice
+  var links={}; document.querySelectorAll('nav.toc a').forEach(function(a){links[a.getAttribute('href').slice(1)]=a});
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){
+      Object.keys(links).forEach(function(k){links[k].classList.remove('on')});
+      var a=links[e.target.id]; if(a){a.classList.add('on'); if(a.scrollIntoView&&window.innerWidth<=900){var ol=a.closest('ol');ol.scrollTo({left:a.offsetLeft-16,behavior:'smooth'})}}
+    }})},{rootMargin:'-30% 0px -60% 0px'});
+    document.querySelectorAll('main section[id]').forEach(function(s){io.observe(s)});
+  }
+})();
+</script>
+
+</body>
+</html>
