@@ -147,6 +147,7 @@ dialog.lb img{display:block;max-width:96vw;max-height:88vh;width:auto;height:aut
 dialog.lb p{color:#dde3ea;font-size:.88rem;margin:.5rem 0 0;max-width:60rem}
 dialog.lb button{position:fixed;top:12px;right:12px;font:600 .9rem var(--f-body);background:#262d36;color:#fff;border:1px solid #444;border-radius:6px;padding:.4rem .8rem;cursor:pointer}
 </style>
+<style>.hero-media{aspect-ratio:1/1;max-width:34rem}</style>
 </head>
 <body>
 
@@ -183,12 +184,12 @@ dialog.lb button{position:fixed;top:12px;right:12px;font:600 .9rem var(--f-body)
   <figure class="hero-media">
     <video src="img/karma.mp4" poster="img/resultado.jpg" autoplay muted loop playsinline controls aria-label="Render del portal con Karma"></video>
   </figure>
-  <p class="hero-cap">Frames 1–240 (10 s a 24 fps), Karma XPU, 1280 × 720, sin composición. La marca de agua es de la licencia Apprentice.</p>
+  <p class="hero-cap">Frames 1–240 (10 s a 24 fps), Karma XPU, 1024 × 1024 (aquí reducido a 720 × 720), sin composición. La marca de agua es de la licencia Apprentice.</p>
 
   <dl class="facts">
     <div><dt>Radio</dt><dd>2 m</dd></div>
-    <div><dt>Chispas</dt><dd>~2 300</dd></div>
-    <div><dt>Render</dt><dd>~5 s/frame</dd></div>
+    <div><dt>Chispas</dt><dd>~4 300</dd></div>
+    <div><dt>Render</dt><dd>~10 s/frame</dd></div>
     <div><dt>Armarlo</dt><dd>60–90 min</dd></div>
   </dl>
 
@@ -341,7 +342,7 @@ v@v *= escala_radio;</code></pre></div>
     <div class="tw"><table>
   <tr><th>Nodo</th><th>Nombre</th><th>Parámetros</th></tr>
   <tr><td>POP Object</td><td><code>chispas</code></td><td>Pestaña <b>Physical</b>: Bounce <b>0.35</b>, Friction <b>0.5</b>, Dynamic Friction Scale <b>0.5</b></td></tr>
-  <tr><td>POP Source</td><td><code>fuente_anillo</code></td><td><b>Source:</b> Emission Type <b>Points</b>, SOP <code>../../OUT_emisor</code>. <b>Birth:</b> Const. Activation 1, Const. Birth Rate <b>2500</b>, Life Expectancy <b>0.9</b>, Life Variance <b>0.6</b>. <b>Attributes:</b> Initial Velocity <b>Use inherited velocity</b>, Inherit Velocity <b>1</b></td></tr>
+  <tr><td>POP Source</td><td><code>fuente_anillo</code></td><td><b>Source:</b> Emission Type <b>Points</b>, SOP <code>../../OUT_emisor</code>. <b>Birth:</b> Const. Activation 1, Const. Birth Rate <b>10 000</b>, Life Expectancy <b>0.5</b>, Life Variance <b>0.25</b>. <b>Attributes:</b> Initial Velocity <b>Use inherited velocity</b>, Inherit Velocity <b>1</b></td></tr>
   <tr><td>POP Wrangle</td><td><code>vida_aleatoria</code></td><td>Código abajo</td></tr>
   <tr><td>POP Axis Force</td><td><code>giro_portal</code></td><td>Shape <b>Sphere</b>, Center (0, 0, 0), Axis (0, 0, <b>1</b>), Radius <code>ch(&quot;../../anillo_emisor/radx&quot;) * 1.3</code>. Pestaña <b>Speed:</b> Orbit Speed <code>1.5 * ch(&quot;../../anillo_emisor/radx&quot;) / 2</code>, Lift 0, Suction 0</td></tr>
   <tr><td>POP Metaball Force</td><td><code>hueco</code></td><td>Geometry Source <b>SOP</b>, SOP Path <code>../../hueco_metaball</code>, Force Scale <b>30</b></td></tr>
@@ -355,13 +356,13 @@ v@v *= escala_radio;</code></pre></div>
     <div class="code"><span class="tag">VEX · vida_aleatoria</span><pre><code>// Una sola vez por chispa: vida con cola larga para que no mueran todas a la misma distancia
 if (i@vida_ok == 0) {
     float u = rand(i@id * 3.17 + 0.5);
-    f@life *= fit01(pow(u, 2.5), 0.5, 2.4);
+    f@life *= fit01(pow(u, 2.5), 0.6, 1.5);
     f@brillo = fit01(rand(i@id * 1.91), 0.55, 1.25);
     i@vida_ok = 1;
 }</code></pre></div>
     <ol><li><strong>Conexiones:</strong><ul><li><code>fuente_anillo</code> → <code>vida_aleatoria</code> → <code>giro_portal</code> → <code>hueco</code> → <code>frenado</code> → <code>gravedad_y_ruido</code> → <strong>3ª entrada</strong> del <code>popsolver</code>.</li><li><code>chispas</code> → <strong>1ª entrada</strong> del <code>popsolver</code>.</li><li><code>piso</code> → <strong>1ª entrada</strong> (izquierda) de <code>colisiones</code>; <code>popsolver</code> → <strong>2ª entrada</strong>.</li><li><code>colisiones</code> → <code>output</code>. Pon el <strong>display flag</strong> en <code>output</code>.</li></ul></li></ol>
     <figure class="shot"><button type="button"><img src="img/20_fuente_anillo_source.png" alt="fuente_anillo, pestaña Source: emite desde los puntos de OUT_emisor." loading="lazy" width="820" height="470"></button><figcaption><code>fuente_anillo</code>, pestaña Source: emite desde los puntos de <code>OUT_emisor</code>.</figcaption></figure>
-    <figure class="shot"><button type="button"><img src="img/21_fuente_anillo_birth.png" alt="Pestaña Birth: 2500 chispas por segundo, vida 0.9 ± 0.6 s." loading="lazy" width="820" height="470"></button><figcaption>Pestaña Birth: 2500 chispas por segundo, vida 0.9 ± 0.6 s.</figcaption></figure>
+    <figure class="shot"><button type="button"><img src="img/21_fuente_anillo_birth.png" alt="Pestaña Birth: 10 000 chispas por segundo y vida corta (0.5 ± 0.25 s), para que las chispas de arriba no alcancen a frenarse y caer." loading="lazy" width="820" height="470"></button><figcaption>Pestaña Birth: 10 000 chispas por segundo y vida corta (0.5 ± 0.25 s), para que las chispas de arriba no alcancen a frenarse y caer.</figcaption></figure>
     <figure class="shot"><button type="button"><img src="img/22_fuente_anillo_attributes.png" alt="Pestaña Attributes: Use inherited velocity. Sin esto, la velocidad del paso 4 no sirve de nada." loading="lazy" width="820" height="470"></button><figcaption>Pestaña Attributes: <strong>Use inherited velocity</strong>. Sin esto, la velocidad del paso 4 no sirve de nada.</figcaption></figure>
     <figure class="shot"><button type="button"><img src="img/23_vida_aleatoria.png" alt="23 vida aleatoria" loading="lazy" width="820" height="420"></button></figure>
     <figure class="shot"><button type="button"><img src="img/24_giro_portal.png" alt="giro_portal: el eje es Z porque el portal está de pie mirando a la cámara." loading="lazy" width="820" height="640"></button><figcaption><code>giro_portal</code>: el eje es Z porque el portal está de pie mirando a la cámara.</figcaption></figure>
@@ -405,14 +406,15 @@ addprim(0, "polyline", @ptnum, cola);</code></pre></div>
     <p>Sliders: <strong>largo_seg 0.07</strong>, <strong>largo_min 0.12</strong>, <strong>brillo_cola 0.15</strong>.</p>
     <figure class="shot"><button type="button"><img src="img/32_estelas_lineas.png" alt="32 estelas lineas" loading="lazy" width="820" height="640"></button></figure>
     <ol><li>Debajo, <strong>Null</strong> <code>OUT_chispas</code> con el <strong>display flag</strong>.</li></ol>
-    <div class="note check"><strong>Comprueba</strong>Ve al frame 73. Deberías ver un anillo de ~2 m con rayas naranjas que salen girando y un centro limpio. En el <em>Geometry Spreadsheet</em> de <code>importar_chispas</code> hay ~2300 puntos. Si no pasa nada, revisa las conexiones del solver y el SOP Path de <code>fuente_anillo</code>.</div>
+    <div class="note check"><strong>Comprueba</strong>Ve al frame 73. Deberías ver un anillo de ~2 m con rayas naranjas que salen girando y un centro limpio. En el <em>Geometry Spreadsheet</em> de <code>importar_chispas</code> hay ~4300 puntos. Si no pasa nada, revisa las conexiones del solver y el SOP Path de <code>fuente_anillo</code>.</div>
   </section>
 
   <section id="p8" data-step>
     <header><span class="num">8</span><h2>Revisar el movimiento (OpenGL)</h2><label class="done-toggle"><input type="checkbox" id="done-p8">Hecho</label></header>
-    <ol><li>En <code>/obj</code>, <strong>Tab → Camera</strong>, nombre <code>cam_preview</code>: Translate (0, 0, <strong>16</strong>), Resolution <strong>1280 × 720</strong> (focal 50, por defecto).</li></ol>
+    <ol><li>En <code>/obj</code>, <strong>Tab → Camera</strong>, nombre <code>cam_preview</code>: Translate (0, 0, <strong>16</strong>), Resolution <strong>1280 × 720</strong> (focal 50, por defecto). El formato final cuadrado se pone en los ROPs.</li></ol>
     <figure class="shot"><button type="button"><img src="img/45_cam_preview.png" alt="45 cam preview" loading="lazy" width="820" height="520"></button></figure>
-    <ol><li>En <code>/out</code>, <strong>Tab → OpenGL</strong>, nombre <code>preview_opengl</code>: Camera <code>/obj/cam_preview</code>, Valid Frame Range <strong>Render Frame Range</strong> de 1 a 240, Override Camera Resolution ✔ 1280 × 720, Output Picture <code>$HIP/render/preview_opengl/portal_$F3.jpg</code>. <strong>Render</strong>.</li></ol>
+    <ol><li>En <code>/out</code>, <strong>Tab → OpenGL</strong>, nombre <code>preview_opengl</code>: Camera <code>/obj/cam_preview</code>, Valid Frame Range <strong>Render Frame Range</strong> de 1 a 240, Override Camera Resolution ✔ <strong>1024 × 1024</strong>, Output Picture <code>$HIP/render/preview_opengl_1024/portal_$F3.jpg</code>. <strong>Render</strong>.</li></ol>
+    <div class="note"><strong>Cuadrado en OpenGL vs. Karma</strong>Al pasar a cuadrado, OpenGL conserva el <strong>ancho</strong> del encuadre y agrega alto (el portal se ve más chico, con espacio arriba). Karma conserva el <strong>alto</strong> y recorta los lados (el portal llena el cuadro). Para revisar movimiento no importa; el encuadre que vale es el de Karma.</div>
     <figure class="shot"><button type="button"><img src="img/51_preview_opengl.png" alt="51 preview opengl" loading="lazy" width="820" height="640"></button></figure>
     <ol><li>Arma el video y revísalo (opcional, con ffmpeg):</li></ol>
     <div class="code"><span class="tag">Terminal</span><pre><code>ffmpeg -framerate 24 -i portal_%03d.jpg -c:v libx264 -crf 18 -pix_fmt yuv420p preview.mp4</code></pre></div>
@@ -429,8 +431,10 @@ v@Cd *= chf("intensidad") * a;          // la cola (Alpha 0) queda negra = se de
 f@width = max(f@pscale, 0.0005) * chf("grosor");</code></pre></div>
     <p>Sliders: <strong>intensidad 3.5</strong>, <strong>grosor 0.6</strong>. Debajo, <strong>Null</strong> <code>RENDER_chispas</code> con el <strong>render flag</strong> (morado). El display flag se queda en <code>OUT_chispas</code>.</p>
     <figure class="shot"><button type="button"><img src="img/33_look_render.png" alt="33 look render" loading="lazy" width="820" height="480"></button></figure>
-    <ol><li><strong>Anillo brillante.</strong> En <code>/obj</code>, <strong>Tab → Geometry</strong> <code>anillo_brillante</code>. Adentro:<ul><li><strong>Object Merge</strong> <code>traer_anillo</code>: Object 1 <code>/obj/portal/OUT_anillo</code>.</li><li><strong>Attribute Wrangle</strong> <code>look_anillo</code>, con Run Over <strong>Detail (only once)</strong>. Rehace el borde como 6 hebras con ruido, para que se vea deshilachado y no como una línea limpia:</li></ul></li></ol>
-    <div class="code"><span class="tag">VEX · look_anillo</span><pre><code>// Anillo deshilachado: varias hebras alrededor del borde, cada una con ruido propio
+    <ol><li><strong>Anillo brillante.</strong> En <code>/obj</code>, <strong>Tab → Geometry</strong> <code>anillo_brillante</code>. Adentro:<ul><li><strong>Object Merge</strong> <code>traer_anillo</code>: Object 1 <code>/obj/portal/OUT_anillo</code>.</li><li><strong>Attribute Wrangle</strong> <code>look_anillo</code>, con Run Over <strong>Detail (only once)</strong>. Rehace el borde como 6 hebras con ruido suave, para que se vea deshilachado y no como una línea limpia:</li></ul></li></ol>
+    <div class="code"><span class="tag">VEX · look_anillo</span><pre><code>// Anillo deshilachado: varias hebras alrededor del borde, cada una con ruido propio.
+// El ruido se calcula sobre el ANGULO (cos, sin) y con baja frecuencia:
+// las hebras ondulan suave, sin zigzag, y el circulo cierra sin corte.
 int hebras = chi("hebras");
 int npts = npoints(0);
 for (int h = 0; h &lt; hebras; h++) {
@@ -438,14 +442,15 @@ for (int h = 0; h &lt; hebras; h++) {
     for (int i = 0; i &lt; npts; i++) {
         vector p = point(0, "P", i);
         vector r = normalize(set(p.x, p.y, 0));
-        float n  = noise(set(i * 0.06, h * 3.1, @Time * 5));
-        float n2 = noise(set(i * 0.7, h * 7.7, @Time * 12));
-        vector q = p + r * (n2 - 0.5) * chf("deshilachado") + {0,0,1} * (n - 0.5) * 0.05;
+        vector d = r * chf("ondas") + set(h * 3.1, h * 7.7, @Time * chf("velocidad"));
+        float n  = noise(d);                         // ondulacion de la hebra (suave)
+        float n2 = noise(d * 4 + set(0, 0, @Time * 6)); // titileo del brillo (rapido, no mueve la forma)
+        vector q = p + r * (n - 0.5) * chf("deshilachado") + {0,0,1} * (n2 - 0.5) * 0.03;
         int pt = addpoint(0, q);
         float b = h == 0 ? 1.0 : fit01(rand(h * 4.3), 0.25, 0.7);   // hebra 0 = nucleo
         vector c = lerp({1.0, 0.42, 0.08}, {1.0, 0.72, 0.32}, b);
-        setpointattrib(0, "Cd", pt, c * fit(n, 0.3, 0.7, 1.5, 4) * b);
-        setpointattrib(0, "width", pt, (h == 0 ? 0.014 : 0.006) * fit(n2, 0.3, 0.7, 0.6, 1.4));
+        setpointattrib(0, "Cd", pt, c * fit(n2, 0.3, 0.7, 1.5, 4) * b);
+        setpointattrib(0, "width", pt, (h == 0 ? 0.014 : 0.006) * fit(n2, 0.3, 0.7, 0.7, 1.3));
         if (prev &gt;= 0) addprim(0, "polyline", prev, pt);
         prev = pt;
     }
@@ -453,11 +458,11 @@ for (int h = 0; h &lt; hebras; h++) {
 // quita el circulo original y sus puntos (solo quedan las hebras)
 removeprim(0, 0, 0);
 for (int i = 0; i &lt; npts; i++) removepoint(0, i);</code></pre></div>
-    <p>Sliders: <strong>hebras 6</strong>, <strong>deshilachado 0.3</strong>.</p>
+    <p>Sliders: <strong>hebras 6</strong>, <strong>deshilachado 0.12</strong>, <strong>ondas 3</strong>, <strong>velocidad 1.5</strong>.</p>
     <ul><ul><li><strong>Null</strong> <code>RENDER_anillo</code> con display y render flag.</li></ul></li></ul>
     <figure class="shot"><button type="button"><img src="img/03_red_anillo_brillante.png" alt="03 red anillo brillante" loading="lazy" width="700" height="500"></button></figure>
     <figure class="shot"><button type="button"><img src="img/40_traer_anillo.png" alt="40 traer anillo" loading="lazy" width="820" height="380"></button></figure>
-    <figure class="shot"><button type="button"><img src="img/41_look_anillo.png" alt="41 look anillo" loading="lazy" width="820" height="760"></button></figure>
+    <figure class="shot"><button type="button"><img src="img/41_look_anillo.png" alt="41 look anillo" loading="lazy" width="820" height="860"></button></figure>
     <ol><li><strong>Piso visible.</strong> En <code>/obj</code>, <strong>Tab → Geometry</strong> <code>piso</code>; adentro, un <strong>Grid</strong> de <strong>300 × 300</strong> con Center Y <strong>-2.6</strong>. Déjale el <strong>display flag encendido</strong>: si lo apagas, Karma no lo renderiza.</li><li><strong>Luz.</strong> En <code>/obj</code>, <strong>Tab → Point Light</strong>, nombre <code>luz_portal</code>: Translate (0, <strong>-1.7</strong>, <strong>0.3</strong>), Color (<strong>1, 0.4, 0.1</strong>), Exposure <strong>4.5</strong>, Intensity <code>(1 - pow(1 - clamp(($F - 1) / 60, 0, 1), 3))</code> (crece con el portal). Las chispas son tan delgadas que casi no iluminan el piso; esta luz lo simula.</li></ol>
     <figure class="shot"><button type="button"><img src="img/44_luz_portal.png" alt="44 luz portal" loading="lazy" width="820" height="640"></button></figure>
   </section>
@@ -472,19 +477,19 @@ for (int i = 0; i &lt; npts; i++) removepoint(0, i);</code></pre></div>
 
   <section id="p11" data-step>
     <header><span class="num">11</span><h2>Render con Karma</h2><label class="done-toggle"><input type="checkbox" id="done-p11">Hecho</label></header>
-    <ol><li>En <code>/out</code>, <strong>Tab → Karma</strong>, nombre <code>karma_look</code>: Camera <code>/obj/cam_preview</code>, Resolution <strong>1280 × 720</strong>, Rendering Engine <strong>XPU</strong> (CPU si no tienes NVIDIA RTX), Path Traced Samples <strong>256</strong>, Output Picture <code>$HIP/render/karma/portal.$F4.exr</code>.</li><li>Pestaña <strong>Rendering → Camera Effects:</strong> desactiva <strong>Motion Blur</strong>. La estela ya está hecha en la geometría (paso 7); con blur quedaría doble.</li><li>Pestaña <strong>Objects:</strong> Exclude Objects <code>MCP_*</code> (solo si tienes esas cámaras de Claude).</li><li>Prueba <strong>un solo frame</strong> (Start/End <strong>73 73</strong>) y revisa el look. Luego pon <strong>1 a 240</strong> y <em>Render to Disk</em>.</li></ol>
+    <ol><li>En <code>/out</code>, <strong>Tab → Karma</strong>, nombre <code>karma_look</code>: Camera <code>/obj/cam_preview</code>, Resolution <strong>1024 × 1024</strong>, Rendering Engine <strong>XPU</strong> (CPU si no tienes NVIDIA RTX), Path Traced Samples <strong>256</strong>, Output Picture <code>$HIP/render/karma/portal.$F4.exr</code>.</li><li>Pestaña <strong>Rendering → Camera Effects:</strong> desactiva <strong>Motion Blur</strong>. La estela ya está hecha en la geometría (paso 7); con blur quedaría doble.</li><li>Pestaña <strong>Objects:</strong> Exclude Objects <code>MCP_*</code> (solo si tienes esas cámaras de Claude).</li><li>Prueba <strong>un solo frame</strong> (Start/End <strong>73 73</strong>) y revisa el look. Luego pon <strong>1 a 240</strong> y <em>Render to Disk</em>.</li></ol>
     <figure class="shot"><button type="button"><img src="img/50_karma_look.png" alt="karma_look configurado para el frame de prueba (73). Para el render completo, Start/End 1 y 240." loading="lazy" width="820" height="880"></button><figcaption><code>karma_look</code> configurado para el frame de prueba (73). Para el render completo, Start/End 1 y 240.</figcaption></figure>
     <p>Para renderizar sin abrir Houdini (en la Venator, con el script <code>render_karma.py</code>):</p>
     <div class="code"><span class="tag">Terminal</span><pre><code>hython ../render_karma.py "experimento de houdini 5 (portal de dr strange).hipnc" --rop /out/karma_look --frames 1 240 --out render/karma_v1</code></pre></div>
     <p>Para ver un EXR como PNG: <code>hoiiotool frame.exr --ch R,G,B --colorconvert linear sRGB -o frame.png</code>.</p>
-    <div class="note"><strong>Cuánto tarda</strong>Con una RTX 4060 (XPU) un frame tarda 6–14 s si es suelto (incluye simular hasta ese frame) y ~4–5 s dentro de una secuencia. Los 240 frames: ~20 min.</div>
+    <div class="note"><strong>Cuánto tarda</strong>Con una RTX 4060 (XPU) y un Ryzen 5 5600G, un frame suelto tarda ~12 s (incluye simular hasta ese frame) y la secuencia ~10.7 s por frame: <strong>~43 min</strong> los 240 frames. El cuello de botella es el <strong>procesador</strong> (simular y pasar miles de curvas a USD), no la tarjeta. Para renders repetidos conviene un <strong>File Cache</strong> después de <code>estelas_lineas</code>, así el render solo lee geometría.</div>
     <p>El <strong>glow</strong> de la referencia se agrega en composición (Nuke, COPs o After Effects), no en el render.</p>
   </section>
 
   <section id="comprobar">
     <header><h2>Cómo sé que me salió bien</h2></header>
     <p>En el frame 73 deberías tener, más o menos:</p>
-    <ul><li><strong>~2300 chispas</strong> vivas (<code>importar_chispas</code>) y el mismo número de líneas en <code>estelas_lineas</code>.</li><li>El borde del anillo entre <strong>1.9 y 2.15 m</strong> del centro: no es un círculo perfecto y la forma cambia con el tiempo.</li><li>El centro <strong>limpio</strong> y unas ~400–500 chispas sobre el piso (y = -2.6).</li><li>En Karma: chispas <strong>naranjas</strong> hacia afuera (no amarillas), un anillo amarillo deshilachado y un brillo naranja suave en el piso.</li></ul>
+    <ul><li><strong>~4300 chispas</strong> vivas (<code>importar_chispas</code>) y el mismo número de líneas en <code>estelas_lineas</code>.</li><li>El borde del anillo entre <strong>1.9 y 2.15 m</strong> del centro: no es un círculo perfecto y la forma cambia con el tiempo.</li><li>El centro <strong>limpio</strong> y unas ~400–500 chispas sobre el piso (y = -2.6).</li><li>En Karma: chispas <strong>naranjas</strong> hacia afuera (no amarillas), un anillo amarillo deshilachado y un brillo naranja suave en el piso.</li></ul>
   </section>
 
   <section id="problemas">
@@ -492,7 +497,9 @@ for (int i = 0; i &lt; npts; i++) removepoint(0, i);</code></pre></div>
     <div class="tw"><table>
   <tr><th>Síntoma</th><th>Causa probable</th><th>Solución</th></tr>
   <tr><td>Las chispas parecen <b>fuegos artificiales</b> (puntos)</td><td>Falta <code>estelas_lineas</code></td><td>Paso 7.3. Las chispas reales se ven como rayas</td></tr>
-  <tr><td>Las líneas parecen <b>pelo</b> pegado al anillo</td><td>Demasiadas chispas o demasiado drag</td><td>Birth Rate 2500, Air Resistance 0.3</td></tr>
+  <tr><td>Las líneas parecen <b>pelo</b> pegado al anillo</td><td>Demasiado drag o chispas lentas</td><td>Air Resistance 0.3, <code>vel_giro</code> 9, <code>vel_salida</code> 3.5</td></tr>
+  <tr><td>Las chispas de arriba se frenan y <b>caen</b> como polvo</td><td>Viven demasiado</td><td>Vida corta (0.5 ± 0.25 s, multiplicador 0.6–1.5) y más Birth Rate para compensar</td></tr>
+  <tr><td>El anillo brillante es una <b>línea quebrada</b> (zigzag)</td><td>Ruido de alta frecuencia por número de punto en <code>look_anillo</code></td><td>Ruido por <b>ángulo</b> y de baja frecuencia, como en el código del paso 9</td></tr>
   <tr><td>Las chispas no se mueven al nacer</td><td>No heredan la velocidad</td><td><code>fuente_anillo</code> → Attributes → <b>Use inherited velocity</b></td></tr>
   <tr><td>Chispas dentro del hueco</td><td>Fuerza <code>hueco</code> débil o metaball pequeña</td><td>Force Scale 30 y radio <code>radx × 0.9</code></td></tr>
   <tr><td>Atraviesan el piso</td><td>Ground plane a la derecha del merge</td><td><code>piso</code> en la <b>1ª entrada</b> (izquierda) de <code>colisiones</code></td></tr>
@@ -518,7 +525,7 @@ for (int i = 0; i &lt; npts; i++) removepoint(0, i);</code></pre></div>
   </section>
 
   <footer>
-    Guía de Venttisca Etterna para la clase de Simulación. Versión en texto: <a href="https://github.com/Venttisca/Guias/tree/main/portal-dr-strange-houdini">README en GitHub</a>.<br>Actualizada el 7 de octubre de 2026. Valores tomados de la escena <code>experimento de houdini 5 (portal de dr strange).hipnc</code>, Houdini 22.0.368 Apprentice. Referencias: <a href="https://www.sidefx.com/community/rise-fx-doctor-strange">RISE FX: Doctor Strange</a>, <a href="https://www.sidefx.com/forum/topic/58274/">hilo sobre la fuerza Metaball</a>, <a href="https://www.sidefx.com/tutorials/houdini-tutorial-2-doctor-strange-inspired-portals">Doctor Strange Inspired Portals</a> (Moeen Sayed) y la documentación de SideFX de <a href="https://www.sidefx.com/docs/houdini/nodes/dop/popsource.html">POP Source</a>, <a href="https://www.sidefx.com/docs/houdini/nodes/dop/popaxisforce.html">POP Axis Force</a>, <a href="https://www.sidefx.com/docs/houdini/nodes/dop/popmetaballforce.html">POP Metaball Force</a> y <a href="https://www.sidefx.com/docs/houdini/nodes/sop/attribnoise.html">Attribute Noise</a>.<br>© 2026 Venttisca Etterna. Bajo licencia <a href="https://creativecommons.org/licenses/by/4.0/deed.es">CC BY 4.0</a>: puedes compartirla y adaptarla dando crédito.
+    Guía de Venttisca Etterna para la clase de Simulación. Versión en texto: <a href="https://github.com/Venttisca/Guias/tree/main/portal-dr-strange-houdini">README en GitHub</a>.<br>Actualizada el 7 de octubre de 2026 (versión final: 10 000 chispas/s, vida corta, anillo sin zigzag, 1024 × 1024). Valores tomados de la escena <code>experimento de houdini 5 (portal de dr strange).hipnc</code>, Houdini 22.0.368 Apprentice. Referencias: <a href="https://www.sidefx.com/community/rise-fx-doctor-strange">RISE FX: Doctor Strange</a>, <a href="https://www.sidefx.com/forum/topic/58274/">hilo sobre la fuerza Metaball</a>, <a href="https://www.sidefx.com/tutorials/houdini-tutorial-2-doctor-strange-inspired-portals">Doctor Strange Inspired Portals</a> (Moeen Sayed) y la documentación de SideFX de <a href="https://www.sidefx.com/docs/houdini/nodes/dop/popsource.html">POP Source</a>, <a href="https://www.sidefx.com/docs/houdini/nodes/dop/popaxisforce.html">POP Axis Force</a>, <a href="https://www.sidefx.com/docs/houdini/nodes/dop/popmetaballforce.html">POP Metaball Force</a> y <a href="https://www.sidefx.com/docs/houdini/nodes/sop/attribnoise.html">Attribute Noise</a>.<br>© 2026 Venttisca Etterna. Bajo licencia <a href="https://creativecommons.org/licenses/by/4.0/deed.es">CC BY 4.0</a>: puedes compartirla y adaptarla dando crédito.
   </footer>
 </main>
 </div>

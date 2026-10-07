@@ -3,7 +3,11 @@
 Paso a paso para construir el portal del *sling ring* de Doctor Strange: un anillo de chispas que nace pequeño, crece, se deforma con un mapa de ruido y lanza chispas naranjas en forma de rayas que rebotan en el piso. Se renderiza con Karma XPU.
 
 ![resultado](img/resultado.jpg)
-*El resultado: frame 73 (segundo 3), render de Karma XPU con un glow de prueba en composición.*
+*El resultado: frame 73 (segundo 3) del render final, Karma XPU a 1024 × 1024, con un glow de prueba en composición.*
+
+> [!NOTE]
+> **Versión web**
+> Pública, para compartir con la clase: <https://venttisca.github.io/Guias/portal-dr-strange-houdini/> (con el video del render, capturas ampliables, código para copiar y casillas por paso). El texto también está en el repo público [Venttisca/Guias](https://github.com/Venttisca/Guias).
 
 > [!TIP]
 > **Versión web:** esta guía también está como página, con capturas ampliables, botones para copiar el código y casillas para marcar cada paso: <https://venttisca.github.io/Guias/portal-dr-strange-houdini/>
@@ -16,7 +20,7 @@ Paso a paso para construir el portal del *sling ring* de Doctor Strange: un anil
 > 4. Después de simular, cada chispa se convierte en una **línea** orientada por su velocidad. Con puntos parecería un fuego artificial.
 > 5. **Look:** chispas y anillo con material **emisivo** (MaterialX), una luz naranja para el piso y render en **Karma XPU**.
 >
-> Tiempo aproximado: 60–90 min la primera vez. La simulación de 240 frames tarda segundos. El render en Karma XPU con una RTX 4060 tarda ~5 s por frame.
+> Tiempo aproximado: 60–90 min la primera vez. La simulación de 240 frames tarda segundos. El render en Karma XPU (RTX 4060 + Ryzen 5 5600G) tarda ~10 s por frame: ~43 min los 10 s.
 
 > [!WARNING]
 > **Regla de trabajo: no renderizar hasta que el movimiento esté bien**
@@ -191,7 +195,7 @@ Una **metaball** del tamaño del hueco. No se ve; solo la usa la fuerza `hueco` 
 | Nodo | Nombre | Parámetros |
 |---|---|---|
 | POP Object | `chispas` | Pestaña **Physical**: Bounce **0.35**, Friction **0.5**, Dynamic Friction Scale **0.5** |
-| POP Source | `fuente_anillo` | **Source:** Emission Type **Points**, SOP `../../OUT_emisor`. **Birth:** Const. Activation 1, Const. Birth Rate **2500**, Life Expectancy **0.9**, Life Variance **0.6**. **Attributes:** Initial Velocity **Use inherited velocity**, Inherit Velocity **1** |
+| POP Source | `fuente_anillo` | **Source:** Emission Type **Points**, SOP `../../OUT_emisor`. **Birth:** Const. Activation 1, Const. Birth Rate **10 000**, Life Expectancy **0.5**, Life Variance **0.25**. **Attributes:** Initial Velocity **Use inherited velocity**, Inherit Velocity **1** |
 | POP Wrangle | `vida_aleatoria` | Código abajo |
 | POP Axis Force | `giro_portal` | Shape **Sphere**, Center (0, 0, 0), Axis (0, 0, **1**), Radius `ch("../../anillo_emisor/radx") * 1.3`. Pestaña **Speed:** Orbit Speed `1.5 * ch("../../anillo_emisor/radx") / 2`, Lift 0, Suction 0 |
 | POP Metaball Force | `hueco` | Geometry Source **SOP**, SOP Path `../../hueco_metaball`, Force Scale **30** |
@@ -206,7 +210,7 @@ Código de `vida_aleatoria`:
 // Una sola vez por chispa: vida con cola larga para que no mueran todas a la misma distancia
 if (i@vida_ok == 0) {
     float u = rand(i@id * 3.17 + 0.5);
-    f@life *= fit01(pow(u, 2.5), 0.5, 2.4);
+    f@life *= fit01(pow(u, 2.5), 0.6, 1.5);
     f@brillo = fit01(rand(i@id * 1.91), 0.55, 1.25);
     i@vida_ok = 1;
 }
@@ -222,7 +226,7 @@ if (i@vida_ok == 0) {
 *`fuente_anillo`, pestaña Source: emite desde los puntos de `OUT_emisor`.*
 
 ![21 fuente anillo birth](img/21_fuente_anillo_birth.png)
-*Pestaña Birth: 2500 chispas por segundo, vida 0.9 ± 0.6 s.*
+*Pestaña Birth: 10 000 chispas por segundo y vida corta (0.5 ± 0.25 s), para que las chispas de arriba no alcancen a frenarse y caer.*
 
 ![22 fuente anillo attributes](img/22_fuente_anillo_attributes.png)
 *Pestaña Attributes: **Use inherited velocity**. Sin esto, la velocidad del paso 4 no sirve de nada.*
@@ -287,14 +291,18 @@ Sliders: **largo_seg 0.07**, **largo_min 0.12**, **brillo_cola 0.15**.
 
 > [!TIP]
 > **Comprueba**
-> Ve al frame 73. Deberías ver un anillo de ~2 m con rayas naranjas que salen girando y un centro limpio. En el *Geometry Spreadsheet* de `importar_chispas` hay ~2300 puntos. Si no pasa nada, revisa las conexiones del solver y el SOP Path de `fuente_anillo`.
+> Ve al frame 73. Deberías ver un anillo de ~2 m con rayas naranjas que salen girando y un centro limpio. En el *Geometry Spreadsheet* de `importar_chispas` hay ~4300 puntos. Si no pasa nada, revisa las conexiones del solver y el SOP Path de `fuente_anillo`.
 
 ## Paso 8: revisar el movimiento (OpenGL)
-1. En `/obj`, **Tab → Camera**, nombre `cam_preview`: Translate (0, 0, **16**), Resolution **1280 × 720** (focal 50, por defecto).
+1. En `/obj`, **Tab → Camera**, nombre `cam_preview`: Translate (0, 0, **16**), Resolution **1280 × 720** (focal 50, por defecto). El formato final cuadrado se pone en los ROPs.
 
 ![45 cam preview](img/45_cam_preview.png)
 
-2. En `/out`, **Tab → OpenGL**, nombre `preview_opengl`: Camera `/obj/cam_preview`, Valid Frame Range **Render Frame Range** de 1 a 240, Override Camera Resolution ✔ 1280 × 720, Output Picture `$HIP/render/preview_opengl/portal_$F3.jpg`. **Render**.
+2. En `/out`, **Tab → OpenGL**, nombre `preview_opengl`: Camera `/obj/cam_preview`, Valid Frame Range **Render Frame Range** de 1 a 240, Override Camera Resolution ✔ **1024 × 1024**, Output Picture `$HIP/render/preview_opengl_1024/portal_$F3.jpg`. **Render**.
+
+> [!NOTE]
+> **Cuadrado en OpenGL vs. Karma**
+> Al pasar a cuadrado, OpenGL conserva el **ancho** del encuadre y agrega alto (el portal se ve más chico, con espacio arriba). Karma conserva el **alto** y recorta los lados (el portal llena el cuadro). Para revisar movimiento no importa; el encuadre que vale es el de Karma.
 
 ![51 preview opengl](img/51_preview_opengl.png)
 
@@ -322,9 +330,11 @@ Sliders: **intensidad 3.5**, **grosor 0.6**. Debajo, **Null** `RENDER_chispas` c
 
 2. **Anillo brillante.** En `/obj`, **Tab → Geometry** `anillo_brillante`. Adentro:
    - **Object Merge** `traer_anillo`: Object 1 `/obj/portal/OUT_anillo`.
-   - **Attribute Wrangle** `look_anillo`, con Run Over **Detail (only once)**. Rehace el borde como 6 hebras con ruido, para que se vea deshilachado y no como una línea limpia:
+   - **Attribute Wrangle** `look_anillo`, con Run Over **Detail (only once)**. Rehace el borde como 6 hebras con ruido suave, para que se vea deshilachado y no como una línea limpia:
 ```vex
-// Anillo deshilachado: varias hebras alrededor del borde, cada una con ruido propio
+// Anillo deshilachado: varias hebras alrededor del borde, cada una con ruido propio.
+// El ruido se calcula sobre el ANGULO (cos, sin) y con baja frecuencia:
+// las hebras ondulan suave, sin zigzag, y el circulo cierra sin corte.
 int hebras = chi("hebras");
 int npts = npoints(0);
 for (int h = 0; h < hebras; h++) {
@@ -332,14 +342,15 @@ for (int h = 0; h < hebras; h++) {
     for (int i = 0; i < npts; i++) {
         vector p = point(0, "P", i);
         vector r = normalize(set(p.x, p.y, 0));
-        float n  = noise(set(i * 0.06, h * 3.1, @Time * 5));
-        float n2 = noise(set(i * 0.7, h * 7.7, @Time * 12));
-        vector q = p + r * (n2 - 0.5) * chf("deshilachado") + {0,0,1} * (n - 0.5) * 0.05;
+        vector d = r * chf("ondas") + set(h * 3.1, h * 7.7, @Time * chf("velocidad"));
+        float n  = noise(d);                         // ondulacion de la hebra (suave)
+        float n2 = noise(d * 4 + set(0, 0, @Time * 6)); // titileo del brillo (rapido, no mueve la forma)
+        vector q = p + r * (n - 0.5) * chf("deshilachado") + {0,0,1} * (n2 - 0.5) * 0.03;
         int pt = addpoint(0, q);
         float b = h == 0 ? 1.0 : fit01(rand(h * 4.3), 0.25, 0.7);   // hebra 0 = nucleo
         vector c = lerp({1.0, 0.42, 0.08}, {1.0, 0.72, 0.32}, b);
-        setpointattrib(0, "Cd", pt, c * fit(n, 0.3, 0.7, 1.5, 4) * b);
-        setpointattrib(0, "width", pt, (h == 0 ? 0.014 : 0.006) * fit(n2, 0.3, 0.7, 0.6, 1.4));
+        setpointattrib(0, "Cd", pt, c * fit(n2, 0.3, 0.7, 1.5, 4) * b);
+        setpointattrib(0, "width", pt, (h == 0 ? 0.014 : 0.006) * fit(n2, 0.3, 0.7, 0.7, 1.3));
         if (prev >= 0) addprim(0, "polyline", prev, pt);
         prev = pt;
     }
@@ -348,7 +359,7 @@ for (int h = 0; h < hebras; h++) {
 removeprim(0, 0, 0);
 for (int i = 0; i < npts; i++) removepoint(0, i);
 ```
-   Sliders: **hebras 6**, **deshilachado 0.3**.
+   Sliders: **hebras 6**, **deshilachado 0.12**, **ondas 3**, **velocidad 1.5**.
    - **Null** `RENDER_anillo` con display y render flag.
 
 ![03 red anillo brillante](img/03_red_anillo_brillante.png)
@@ -378,7 +389,7 @@ for (int i = 0; i < npts; i++) removepoint(0, i);
 > Al pasar a USD (Karma), el color `Cd` de SOPs se llama **`displayColor`**. Si pones `Cd` en Geomprop, las chispas salen negras.
 
 ## Paso 11: render con Karma
-1. En `/out`, **Tab → Karma**, nombre `karma_look`: Camera `/obj/cam_preview`, Resolution **1280 × 720**, Rendering Engine **XPU** (CPU si no tienes NVIDIA RTX), Path Traced Samples **256**, Output Picture `$HIP/render/karma/portal.$F4.exr`.
+1. En `/out`, **Tab → Karma**, nombre `karma_look`: Camera `/obj/cam_preview`, Resolution **1024 × 1024**, Rendering Engine **XPU** (CPU si no tienes NVIDIA RTX), Path Traced Samples **256**, Output Picture `$HIP/render/karma/portal.$F4.exr`.
 2. Pestaña **Rendering → Camera Effects:** desactiva **Motion Blur**. La estela ya está hecha en la geometría (paso 7); con blur quedaría doble.
 3. Pestaña **Objects:** Exclude Objects `MCP_*` (solo si tienes esas cámaras de Claude).
 4. Prueba **un solo frame** (Start/End **73 73**) y revisa el look. Luego pon **1 a 240** y *Render to Disk*.
@@ -394,7 +405,7 @@ Para ver un EXR como PNG: `hoiiotool frame.exr --ch R,G,B --colorconvert linear 
 
 > [!NOTE]
 > **Cuánto tarda**
-> Con una RTX 4060 (XPU) un frame tarda 6–14 s si es suelto (incluye simular hasta ese frame) y ~4–5 s dentro de una secuencia. Los 240 frames: ~20 min.
+> Con una RTX 4060 (XPU) y un Ryzen 5 5600G, un frame suelto tarda ~12 s (incluye simular hasta ese frame) y la secuencia ~10.7 s por frame: **~43 min** los 240 frames. El cuello de botella es el **procesador** (simular y pasar miles de curvas a USD), no la tarjeta. Para renders repetidos conviene un **File Cache** después de `estelas_lineas`, así el render solo lee geometría.
 
 El **glow** de la referencia se agrega en composición (Nuke, COPs o After Effects), no en el render.
 
@@ -402,7 +413,7 @@ El **glow** de la referencia se agrega en composición (Nuke, COPs o After Effec
 
 ## Cómo sé que me salió bien
 En el frame 73 deberías tener, más o menos:
-- **~2300 chispas** vivas (`importar_chispas`) y el mismo número de líneas en `estelas_lineas`.
+- **~4300 chispas** vivas (`importar_chispas`) y el mismo número de líneas en `estelas_lineas`.
 - El borde del anillo entre **1.9 y 2.15 m** del centro: no es un círculo perfecto y la forma cambia con el tiempo.
 - El centro **limpio** y unas ~400–500 chispas sobre el piso (y = -2.6).
 - En Karma: chispas **naranjas** hacia afuera (no amarillas), un anillo amarillo deshilachado y un brillo naranja suave en el piso.
@@ -411,7 +422,9 @@ En el frame 73 deberías tener, más o menos:
 | Síntoma | Causa probable | Solución |
 |---|---|---|
 | Las chispas parecen **fuegos artificiales** (puntos) | Falta `estelas_lineas` | Paso 7.3. Las chispas reales se ven como rayas |
-| Las líneas parecen **pelo** pegado al anillo | Demasiadas chispas o demasiado drag | Birth Rate 2500, Air Resistance 0.3 |
+| Las líneas parecen **pelo** pegado al anillo | Demasiado drag o chispas lentas | Air Resistance 0.3, `vel_giro` 9, `vel_salida` 3.5 |
+| Las chispas de arriba se frenan y **caen** como polvo | Viven demasiado | Vida corta (0.5 ± 0.25 s, multiplicador 0.6–1.5) y más Birth Rate para compensar |
+| El anillo brillante es una **línea quebrada** (zigzag) | Ruido de alta frecuencia por número de punto en `look_anillo` | Ruido por **ángulo** y de baja frecuencia, como en el código del paso 9 |
 | Las chispas no se mueven al nacer | No heredan la velocidad | `fuente_anillo` → Attributes → **Use inherited velocity** |
 | Chispas dentro del hueco | Fuerza `hueco` débil o metaball pequeña | Force Scale 30 y radio `radx × 0.9` |
 | Atraviesan el piso | Ground plane a la derecha del merge | `piso` en la **1ª entrada** (izquierda) de `colisiones` |
