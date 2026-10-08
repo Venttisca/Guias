@@ -1,9 +1,14 @@
 # Guía: portal de chispas de Dr. Strange en Houdini
 
-Paso a paso para construir el portal del *sling ring* de Doctor Strange: un anillo de chispas que nace pequeño, crece, se deforma con un mapa de ruido y lanza chispas naranjas en forma de rayas que rebotan en el piso. Se renderiza con Karma XPU.
+Paso a paso para construir el portal del *sling ring* de Doctor Strange: un anillo de chispas que nace pequeño, crece, se deforma con un mapa de ruido y lanza chispas naranjas en forma de rayas que rebotan en el piso. Lleva un humo leve en el aro, se renderiza con Karma XPU y el glow se agrega en Copernicus.
 
 ![resultado](img/resultado.jpg)
-*El resultado: frame 73 (segundo 3) del render final, Karma XPU a 1024 × 1024, con un glow de prueba en composición.*
+
+▶ [Ver el video del render](img/karma.mp4)
+*El resultado: frames 1–240 (10 s a 24 fps), Karma XPU a 1024 × 1024 con humo, compuesto en Copernicus (glow, curva fílmica y saturación). Aquí reducido a 720 × 720.*
+
+![61 humo comp f73](img/61_humo_comp_f73.jpg)
+*Frame 73: sin humo y con humo leve, ya compuestos.*
 
 > [!NOTE]
 > **Versión web**
@@ -19,12 +24,14 @@ Paso a paso para construir el portal del *sling ring* de Doctor Strange: un anil
 > 3. Un **POP Network** suelta chispas desde ese círculo y las hace girar. También las frena y les aplica gravedad. Una **fuerza Metaball** mantiene limpio el hueco del centro y un **Ground Plane** las hace rebotar.
 > 4. Después de simular, cada chispa se convierte en una **línea** orientada por su velocidad. Con puntos parecería un fuego artificial.
 > 5. **Look:** chispas y anillo con material **emisivo** (MaterialX), una luz naranja para el piso y render en **Karma XPU**.
+> 6. **Humo (opcional):** un **Pyro Solver** suelta humo leve desde el aro, que brilla naranja por sí mismo. Se prende y apaga con un interruptor.
+> 7. **Composición:** en **Copernicus** (dentro de Houdini) se agregan dos glows, una curva fílmica y saturación, y se guarda la secuencia final.
 >
-> Tiempo aproximado: 60–90 min la primera vez. La simulación de 240 frames tarda segundos. El render en Karma XPU (RTX 4060 + Ryzen 5 5600G) tarda ~10 s por frame: ~43 min los 10 s.
+> Tiempo aproximado: 60–90 min la primera vez, más ~30 min el humo y la composición. La simulación de chispas tarda segundos; la del humo, unos minutos. El render en Karma XPU (RTX 4060 + Ryzen 5 5600G) tarda ~10 s por frame sin humo (~43 min los 10 s) y ~18 s por frame con humo (de ~9 s al inicio a ~22 s al final, conforme crecen el humo y las chispas): ~75 min los 10 s. La composición tarda segundos.
 
 > [!WARNING]
 > **Regla de trabajo: no renderizar hasta que el movimiento esté bien**
-> Revisa la simulación con previews de **OpenGL** (paso 8) y pasa a Karma solo cuando el movimiento te convenza. Un render largo de algo que todavía está mal es tiempo perdido. 
+> Revisa la simulación con previews de **OpenGL** (paso 8) y pasa a Karma solo cuando el movimiento te convenza. Un render largo de algo que todavía está mal es tiempo perdido.
 
 ## Antes de empezar
 - **Versión:** Houdini 22.0 Apprentice. Algunos nodos se llaman `::2.0` (POP Source, POP Solver, Attribute Noise); el menú Tab elige la versión nueva solo.
@@ -62,7 +69,19 @@ fuente_anillo → vida_aleatoria → giro_portal → hueco → frenado → grave
 piso (Ground Plane) ─┐ (izquierda)
 popsolver ───────────┴→ colisiones (Merge) → output
 ```
-En `/obj`: `portal`, `anillo_brillante` (copia el anillo deformado para la línea brillante), `piso`, `luz_portal` y `cam_preview`. En `/mat`, tres materiales; en `/out`, un ROP de OpenGL y uno de Karma.
+En `/obj`: `portal`, `anillo_brillante` (copia el anillo deformado para la línea brillante), `piso`, `luz_portal`, `cam_preview` y, si llevas humo, `CONTROLES` y `humo`. En `/mat`, tres materiales (cuatro con el humo); en `/out`, un ROP de OpenGL y uno de Karma.
+
+Dentro de `/obj/humo` (paso 12, opcional):
+```
+traer_anillo (Object Merge) → fuente_humo (Wrangle) → rasterizar_fuente (Volume Rasterize Attributes)
+  → sim_humo (Pyro Solver) → densidad_y_temperatura (Blast) → cache_humo (File Cache)
+  → material_humo (Material) → OUT_humo (Null)
+```
+Dentro de `/img/comp_portal` (paso 13, Copernicus):
+```
+render_karma (File) → glow_cerca (Glow) → glow_lejos (Glow) → curva_filmica (Tonemap) → saturacion (HSV) → OUT_comp (Output)
+guardar_comp (ROP Image) ┄┄ lee saturacion
+```
 
 Las flechas punteadas (┄) no son cables: el nodo lee la geometría por su **SOP Path**.
 
@@ -405,9 +424,97 @@ Para ver un EXR como PNG: `hoiiotool frame.exr --ch R,G,B --colorconvert linear 
 
 > [!NOTE]
 > **Cuánto tarda**
-> Con una RTX 4060 (XPU) y un Ryzen 5 5600G, un frame suelto tarda ~12 s (incluye simular hasta ese frame) y la secuencia ~10.7 s por frame: **~43 min** los 240 frames. El cuello de botella es el **procesador** (simular y pasar miles de curvas a USD), no la tarjeta. Para renders repetidos conviene un **File Cache** después de `estelas_lineas`, así el render solo lee geometría.
+> Con una RTX 4060 (XPU) y un Ryzen 5 5600G, un frame suelto tarda ~12 s (incluye simular hasta ese frame) y la secuencia ~10.7 s por frame: **~43 min** los 240 frames. El cuello de botella es el **procesador** (simular y pasar miles de curvas a USD), no la tarjeta. Para renders repetidos conviene un **File Cache** después de `estelas_lineas`, así el render solo lee geometría. Con el humo del paso 12 sube a ~18 s por frame en promedio (de ~9 s al inicio a ~22 s al final): **~75 min**.
 
-El **glow** de la referencia se agrega en composición (Nuke, COPs o After Effects), no en el render.
+El **glow** de la referencia no se hace en el render: se agrega en composición (paso 13).
+
+## Paso 12 (opcional): humo leve en el aro
+Un humo 3D suave que sale del aro y brilla naranja. Es opcional: las chispas lo tapan bastante, y se nota sobre todo después de la composición, como un halo rojizo y una bruma. Por eso lleva un **interruptor** para prenderlo y apagarlo.
+
+1. **Interruptor.** En `/obj`, **Tab → Null**, nombre `CONTROLES`. Engrane → **Edit Parameter Interface** → arrastra un **Toggle**: Name `humo`, Label `Humo en el aro`, Default encendido → *Accept*.
+2. **Objeto.** En `/obj`, **Tab → Geometry**, nombre `humo`. En su parámetro **Display** (pestaña Transform, abajo) escribe la expresión `ch("../CONTROLES/humo")`. Como en `/obj` el display también es la visibilidad en Karma, apagado no aparece ni se renderiza, y no cuesta tiempo.
+3. Entra a `humo` y crea:
+
+| Nodo | Nombre | Parámetros |
+|---|---|---|
+| Object Merge | `traer_anillo` | Object 1 `/obj/portal/OUT_anillo` (el aro deformado, que crece con el portal) |
+| Attribute Wrangle | `fuente_humo` | El código de abajo |
+| Volume Rasterize Attributes | `rasterizar_fuente` | Attributes `density temperature v`, Voxel Size **0.04** |
+| Pyro Solver | `sim_humo` | Voxel Size **0.04**. Shape: Dissipation **0.35**, Buoyancy Scale **0.4**, Disturbance **0.4**, Turbulence **0.3** (Swirl Size **0.5**). Sparse activado (por defecto) |
+| Blast | `densidad_y_temperatura` | Group Type **Primitives**, Group `@name=flame @name=vel.*`. Quita lo que no se renderiza para que la caché pese menos. **No** borres `temperature` |
+| File Cache | `cache_humo` | Base Folder `$HIP/cache`, Base Name `humo_portal`, frames **1–240**. *Save to Disk* y después activa **Load from Disk** |
+| Material | `material_humo` | Material `/mat/humo_pyro` |
+| Null | `OUT_humo` | Display y render flag |
+
+```vex
+// Puntos fuente del humo sobre el aro: densidad leve con ruido y un empuje hacia afuera
+vector r = normalize(set(@P.x, @P.y, 0));
+float n = noise(set(@P.x * 2, @P.y * 2, @Time * 0.8));
+f@density = chf("densidad") * fit(n, 0.35, 0.65, 0, 1);   // manchas: no sale parejo en todo el aro
+f@temperature = chf("temperatura");
+v@v = r * chf("salida") + cross({0,0,1}, r) * chf("giro");
+f@pscale = chf("tamano");
+```
+Sliders: **densidad 0.6**, **temperatura 0.4**, **salida 0.6**, **giro 1**, **tamano 0.08**.
+
+4. **Material.** En `/mat`, **Tab → Karma Material Builder**, nombre `humo_pyro`. Adentro, borra el Standard Surface, crea un **Karma Pyro Shader** (`shader_humo`) y conecta su salida a **volume** de `Material_Outputs_and_AOVs`:
+   - Smoke Color (**1, 0.6, 0.35**), Smoke Brightness **3**, Density **1**.
+   - **Enable Fire** ✔: Intensity Scale **4**, Source Range de intensidad y de color **0 a 0.4**, Enable Mask ✔.
+
+   Con el fuego activado, el humo **brilla naranja por sí mismo** y no hace falta otra luz.
+5. Vuelve a renderizar con el paso 11, con `karma_look` sin cambios. El humo entra solo, porque el objeto `humo` está visible.
+
+![60 humo solo](img/60_humo_solo.png)
+*Solo el humo (con portal, anillo y piso apagados), frame 73.*
+
+> [!WARNING]
+> **Tres cosas que no funcionan**
+> 1. **El material en el objeto.** Si pones el material en *Render → Material* del objeto `humo`, Karma lo ignora en volúmenes. Tiene que ir en el **Material SOP** de adentro.
+> 2. **Una luz solo para el humo.** El *Light Mask* del objeto no se respeta con el Karma de `/out`, y la luz aclara también el piso. Usa la emisión del fuego.
+> 3. **Fuego sin efecto.** El fuego lee `temperature` en un rango de 0 a 1, pero aquí la temperatura llega a 0.4. Pon el **Source Range en 0–0.4**.
+
+## Paso 13: composición en Copernicus (glow)
+El glow, el tono y el color se agregan **después** del render, dentro de Houdini, con **Copernicus** (los COPs nuevos). Así se ajusta en segundos sin volver a renderizar.
+
+1. En `/img`, **Tab → Copernicus Network**, nombre `comp_portal`. Entra y crea:
+
+| Nodo | Nombre | Parámetros |
+|---|---|---|
+| File | `render_karma` | File Name `$HIP/render/karma/portal.$F4.exr` (la salida del paso 11). En la lista de AOVs: File AOV **`C`**, Channel Type **RGB** (no RGBA). Border **Constant** |
+| Glow | `glow_cerca` | Glow Threshold **0.7**, Brightness **0.7**, Size **0.01**, Tint (**1, 0.7, 0.4**): halo apretado en el anillo y las chispas |
+| Glow | `glow_lejos` | Glow Threshold **0.35**, Brightness **1**, Size **0.1**, Tint (**1, 0.35, 0.08**): resplandor naranja grande, también hacia el hueco |
+| Tonemap | `curva_filmica` | Operator **Hable Filmic**, Exposure **1.3**: suaviza las luces altas para que el piso no se queme |
+| HSV | `saturacion` | Hue Shift **−9**, Saturation Scale **1.35**: el tonemap empuja el naranja hacia dorado, y esto lo regresa |
+| Output | `OUT_comp` | Conectado a `saturacion` |
+
+2. **Guardar la secuencia.** En la misma red, **Tab → ROP Image**, nombre `guardar_comp`:
+   - COP Path `/img/comp_portal/saturacion` (el nodo con la imagen, **no** el `OUT_comp`).
+   - AOV Name **`hsv_adjust`**: el nombre de la **salida** de ese nodo (pasa el ratón sobre su salida para verlo).
+   - Output File `$HIP/render/comp/portal_comp.$F4.png`.
+   - Valid Frame Range **Render Frame Range**, **1 a 240**. *Render*.
+3. Video con ffmpeg:
+```bash
+ffmpeg -framerate 24 -i render/comp/portal_comp.%04d.png -c:v libx264 -crf 18 -pix_fmt yuv420p portal_final.mp4
+```
+
+![70 comp crudo vs comp](img/70_comp_crudo_vs_comp.jpg)
+*Frame 73: el render crudo de Karma y la composición.*
+
+Para componer sin abrir Houdini (en la Venator, con el script `comp_copernicus.py`, después de `render_karma.py`):
+```bash
+hython ../comp_copernicus.py "experimento de houdini 5 (portal de dr strange).hipnc" --entrada render/karma_final_humo --salida render/comp_final --nombre portal_final
+```
+Tarda ~35 s los 240 frames (con la RTX 4060 por OpenCL).
+
+> [!WARNING]
+> **Lo que costó**
+> 1. **"No valid output AOVs specified".** El ROP Image necesita el COP Path del nodo con la imagen y, en AOV Name, el nombre de su salida (`glow`, `tonemap`, `hsv_adjust`…). El File también necesita un AOV declarado (`C`), o no tiene salidas.
+> 2. **Bloques y una costura a la mitad** (arriba sin glow, abajo con glow): pasa al cargar el EXR como **RGBA**. Cárgalo como **RGB**; el fondo es negro y el alfa no hace falta.
+> 3. **El piso aparece arriba de la imagen:** el Border por defecto (*Wrap*) repite la imagen al hacer el blur. Usa **Constant**.
+> 4. **Lento o con aviso "Falling back to built-in CPU OpenCL driver":** Copernicus usa OpenCL. En Linux con NVIDIA instala `opencl-nvidia` (`sudo pacman -S opencl-nvidia` en Arch); `clinfo -l` debe mostrar la tarjeta.
+
+![71 comp error costura](img/71_comp_error_costura.jpg)
+*El error de la costura (EXR cargado como RGBA).*
 
 ---
 
@@ -417,6 +524,8 @@ En el frame 73 deberías tener, más o menos:
 - El borde del anillo entre **1.9 y 2.15 m** del centro: no es un círculo perfecto y la forma cambia con el tiempo.
 - El centro **limpio** y unas ~400–500 chispas sobre el piso (y = -2.6).
 - En Karma: chispas **naranjas** hacia afuera (no amarillas), un anillo amarillo deshilachado y un brillo naranja suave en el piso.
+- Con humo: una bruma rojiza leve alrededor del aro, que se nota más después de la composición.
+- En la composición: un halo naranja alrededor del anillo y de las chispas que entra un poco al hueco, sin costuras ni bloques, y el piso sin quemarse.
 
 ## Si algo sale mal
 | Síntoma | Causa probable | Solución |
@@ -436,6 +545,12 @@ En el frame 73 deberías tener, más o menos:
 | Cambio un valor y no pasa nada | Caché de la simulación | **Reset Simulation** en `chispas_sim` |
 | No hay sliders / están en 0 | No se crearon los parámetros | **Create spare parameters** y escribe los valores |
 | `look_anillo` sale vacío | Borré el círculo con `removeprim(0, 0, 1)` | Usa `removeprim(0, 0, 0)` y luego `removepoint` como en el código |
+| El humo sale con otro color o gris | Material asignado en el objeto | Asígnalo con un **Material SOP** dentro de `humo` (paso 12) |
+| El humo no brilla | Rango de fuego 0–1 o `temperature` borrada | Source Range **0–0.4** y no borres `temperature` en el Blast |
+| El humo no sale en el render | Interruptor apagado o caché vacía | `CONTROLES` → *Humo en el aro* ✔ y `cache_humo` con *Load from Disk* tras guardarla |
+| ROP Image: "No valid output AOVs specified" | COP Path o AOV Name mal | COP Path al nodo `saturacion` y AOV Name `hsv_adjust` |
+| Glow con **bloques** o una **costura** horizontal | EXR cargado como RGBA | Channel Type **RGB** en el File |
+| El piso aparece arriba en la comp | Border *Wrap* | Border **Constant** en el File |
 
 ## Para entenderlo (no es necesario para replicarlo)
 - **Por qué líneas:** una chispa real se mueve muy rápido y el ojo (o la cámara) ve su recorrido. `estelas_lineas` dibuja ese recorrido como un motion blur hecho en geometría. Así se ve desde el viewport y se controla el largo.
@@ -443,6 +558,8 @@ En el frame 73 deberías tener, más o menos:
 - **Cola larga:** con `pow(rand, 3)` la mayoría de las chispas tiene valores bajos y unas pocas valores altos. Así unas pocas vuelan lejos y el borde exterior se ve irregular, no como un anillo parejo.
 - **Mapa de ruido vs. fórmula:** antes de usar el mapa de ruido se probaron deformaciones por ángulo (respiración, óvalo, temblor, abolladuras), y se veían demasiado matemáticas. Un ruido 3D que se mueve por el espacio se ve más orgánico.
 - **Fuerza Metaball:** RISE FX la usó en la película para que las chispas no entraran al círculo. Un objeto de colisión en el centro funciona peor y no debe verse en el render.
+- **Por qué el glow en composición:** en el render cada cambio de glow costaría ~45 min; en Copernicus se ajusta mirando el resultado y se aplica a los 240 frames en segundos. Dos glows (uno chico y fuerte, otro grande y suave) se parecen más a cómo una cámara real ve una luz muy intensa que uno solo.
+- **Por qué el humo brilla solo:** con una luz extra se iluminaba también el piso. La emisión del fuego del Pyro Shader solo afecta al humo.
 
 ## Variaciones para probar
 - **Más caótico:** sube *Amplitude* en `mapa_de_ruido` (0.5–0.6) o baja *Pulse Duration*.
@@ -451,11 +568,10 @@ En el frame 73 deberías tener, más o menos:
 - **Sin piso:** desactiva el `piso` (DOP) y el objeto `piso`; las chispas caen al vacío.
 - **Otro color (magia verde, azul):** cambia los tres colores de `color_por_edad` y los del anillo en `look_anillo`.
 
-
 ## Fuentes
 - [RISE FX: Doctor Strange](https://www.sidefx.com/community/rise-fx-doctor-strange) (SideFX) y el [hilo del foro sobre la fuerza Metaball](https://www.sidefx.com/forum/topic/58274/).
 - [Doctor Strange Inspired Portals](https://www.sidefx.com/tutorials/houdini-tutorial-2-doctor-strange-inspired-portals), Moeen Sayed (SideFX).
-- [POP Source](https://www.sidefx.com/docs/houdini/nodes/dop/popsource.html), [POP Axis Force](https://www.sidefx.com/docs/houdini/nodes/dop/popaxisforce.html), [POP Metaball Force](https://www.sidefx.com/docs/houdini/nodes/dop/popmetaballforce.html), [Attribute Noise](https://www.sidefx.com/docs/houdini/nodes/sop/attribnoise.html) (SideFX).
+- [POP Source](https://www.sidefx.com/docs/houdini/nodes/dop/popsource.html), [POP Axis Force](https://www.sidefx.com/docs/houdini/nodes/dop/popaxisforce.html), [POP Metaball Force](https://www.sidefx.com/docs/houdini/nodes/dop/popmetaballforce.html), [Attribute Noise](https://www.sidefx.com/docs/houdini/nodes/sop/attribnoise.html), [Pyro Solver](https://www.sidefx.com/docs/houdini/nodes/sop/pyrosolver.html) y [Copernicus](https://www.sidefx.com/docs/houdini/copernicus/index.html) (SideFX).
 - Valores tomados de la escena `experimento de houdini 5 (portal de dr strange).hipnc` (2026-10-07).
 
 ---
