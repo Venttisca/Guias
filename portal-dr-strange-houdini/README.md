@@ -229,23 +229,66 @@ Una **metaball** del tamaño del hueco. No se ve; solo la usa la fuerza `hueco` 
 ![15 hueco metaball](img/15_hueco_metaball.png)
 
 ## Paso 6: la simulación de chispas
-1. **Tab → DOP Network**, nombre `chispas_sim`. Entra en él (puede traer un nodo `output`; déjalo).
-2. Crea estos nodos:
+Aquí nacen y se mueven las chispas. Todo pasa **dentro de un DOP Network** (una red de simulación): una **fuente** crea partículas sobre el anillo, varias **fuerzas** las empujan y un **solver** calcula su movimiento frame a frame.
 
-| Nodo | Nombre | Parámetros |
-|---|---|---|
-| POP Object | `chispas` | Pestaña **Physical**: Bounce **0.35**, Friction **0.5**, Dynamic Friction Scale **0.5** |
-| POP Source | `fuente_anillo` | **Source:** Emission Type **Points**, SOP `../../OUT_emisor` (el Null del paso 4; `../../` sube dos niveles: sale de `fuente_anillo` y sale de `chispas_sim`, hasta `/obj/portal`). **Birth:** Const. Activation 1, Const. Birth Rate **10 000**, Life Expectancy **0.5**, Life Variance **0.25**. **Attributes:** Initial Velocity **Use inherited velocity**, Inherit Velocity **1** |
-| POP Wrangle | `vida_aleatoria` | Código abajo |
-| POP Axis Force | `giro_portal` | Shape **Sphere**, Center (0, 0, 0), Axis (0, 0, **1**), Radius `ch("../../anillo_emisor/radx") * 1.3` (el radio del anillo × 1.3; `../../` sube de dentro de `chispas_sim` a `/obj/portal`). Pestaña **Speed:** Orbit Speed `1.5 * ch("../../anillo_emisor/radx") / 2` (1.5 cuando el anillo mide 2 m; más lento cuando es chico), Lift 0, Suction 0 |
-| POP Metaball Force | `hueco` | Geometry Source **SOP**, SOP Path `../../hueco_metaball` (la metaball del paso 5, dos niveles arriba), Force Scale **30** |
-| POP Drag | `frenado` | Air Resistance **0.3** |
-| POP Force | `gravedad_y_ruido` | Force (0, **-2**, 0). Pestaña **Noise:** Amplitude **1.5**, Swirl Size **0.5** |
-| POP Solver | `popsolver` | Por defecto |
-| Ground Plane | `piso` | Center Y **-2.6**. Pestaña **Physical:** Bounce **0.35**, Friction **0.5**, Dynamic Friction Scale **0.5** |
-| Merge | `colisiones` | Por defecto (relación *Collide*) |
+Vas a crear 10 nodos. Esta es la lista; abajo va cada uno explicado, con sus valores pestaña por pestaña y su captura.
 
-Código de `vida_aleatoria`:
+| # | Nodo (lo que escribes después de **Tab**) | Nombre | Para qué sirve |
+|---|---|---|---|
+| 6.2 | POP Object | `chispas` | El «contenedor» de las partículas: cuánto rebotan y cuánto se frenan al chocar |
+| 6.3 | POP Source | `fuente_anillo` | Crea las chispas sobre los puntos del anillo |
+| 6.4 | POP Wrangle | `vida_aleatoria` | Le da a cada chispa una vida y un brillo distintos |
+| 6.5 | POP Axis Force | `giro_portal` | Las hace girar alrededor del centro del portal |
+| 6.6 | POP Metaball Force | `hueco` | Las saca del centro para que el hueco quede limpio |
+| 6.7 | POP Drag | `frenado` | Las frena un poco, como el aire |
+| 6.8 | POP Force | `gravedad_y_ruido` | Gravedad suave y un temblor aleatorio |
+| 6.9 | POP Solver | `popsolver` | El que calcula el movimiento |
+| 6.10 | Ground Plane | `piso` | Un piso invisible donde rebotan |
+| 6.11 | Merge | `colisiones` | Junta el piso con las chispas para que choquen |
+
+> [!TIP]
+> **Cómo llenar un campo «SOP» o «SOP Path» sin escribir la ruta**
+> Varios nodos de este paso leen geometría que está **fuera** del DOP Network (el anillo, la metaball). A la derecha del campo hay un **botón que abre el selector de nodos** (pasa el ratón encima y lo dice): navega a `portal`, elige el nodo (por ejemplo `OUT_emisor`) y acepta. Houdini escribe la ruta solo. Si la escribes a mano, recuerda que `../../` significa «sube dos niveles»: uno para salir del nodo en el que estás y otro para salir de `chispas_sim`, hasta `/obj/portal` (ver el recuadro *Cómo leer las rutas* al inicio).
+
+### 6.1 Crea el DOP Network
+1. En `/obj/portal`, **Tab → DOP Network**, nombre `chispas_sim`.
+2. Entra en él (doble clic). Puede traer un nodo `output` adentro: **déjalo**, es la salida de la simulación.
+
+### 6.2 `chispas` (POP Object)
+**Tab → POP Object**, nombre `chispas`. Es el objeto que guarda todas las partículas.
+- Pestaña **Physical:** Bounce **0.35** (cuánto rebotan), Friction **0.5** y Dynamic Friction Scale **0.5** (cuánto se frenan al arrastrarse por el piso). El resto, por defecto.
+
+![28 chispas popobject](img/28_chispas_popobject.png)
+*`chispas`, pestaña Physical. El rebote se ajusta aquí **y** en el piso (6.10), porque los dos valores se combinan.*
+
+### 6.3 `fuente_anillo` (POP Source)
+**Tab → POP Source**, nombre `fuente_anillo`. Crea chispas nuevas en cada frame sobre los puntos del anillo. Tiene tres pestañas que importan:
+
+**Pestaña Source** (de dónde salen):
+- Emission Type: **Points** (una chispa por punto del anillo, no repartidas sobre una superficie).
+- SOP: `../../OUT_emisor`. Es el Null `OUT_emisor` del paso 4, la salida del anillo con la velocidad ya calculada. Usa el botón del selector de nodos para elegirlo o escribe la ruta: `../../` sube de `fuente_anillo` a `/obj/portal`.
+
+![20 fuente anillo source](img/20_fuente_anillo_source.png)
+*Pestaña Source: Emission Type Points y la ruta a `OUT_emisor`.*
+
+**Pestaña Birth** (cuántas y cuánto viven):
+- Const. Activation: **1** (la fuente está encendida).
+- Const. Birth Rate: **10 000** (chispas nuevas por segundo).
+- Life Expectancy: **0.5** (viven medio segundo)…
+- …Life Variance: **0.25** (…más o menos un cuarto de segundo, para que no mueran todas a la vez).
+
+![21 fuente anillo birth](img/21_fuente_anillo_birth.png)
+*Pestaña Birth. La vida es corta a propósito: así las chispas de arriba no alcanzan a frenarse y caer como polvo.*
+
+**Pestaña Attributes** (con qué velocidad nacen):
+- Initial Velocity: **Use inherited velocity** (usar la velocidad `v` que guardó el anillo en el paso 4).
+- Inherit Velocity: **1** (toda esa velocidad, sin reducirla).
+
+![22 fuente anillo attributes](img/22_fuente_anillo_attributes.png)
+*Pestaña Attributes. Sin **Use inherited velocity**, la velocidad del paso 4 no sirve de nada y las chispas nacen quietas.*
+
+### 6.4 `vida_aleatoria` (POP Wrangle)
+**Tab → POP Wrangle**, nombre `vida_aleatoria`, y pega este código en el cuadro *VEXpression*. Le da a cada chispa, **una sola vez** al nacer, una vida y un brillo propios: la mayoría vive poco y unas pocas mucho, así no forman un anillo parejo.
 ```vex
 // Una sola vez por chispa: vida con cola larga para que no mueran todas a la misma distancia
 if (i@vida_ok == 0) {
@@ -255,36 +298,74 @@ if (i@vida_ok == 0) {
     i@vida_ok = 1;
 }
 ```
-
-3. **Conexiones:**
-   - `fuente_anillo` → `vida_aleatoria` → `giro_portal` → `hueco` → `frenado` → `gravedad_y_ruido` → **3ª entrada** del `popsolver`.
-   - `chispas` → **1ª entrada** del `popsolver`.
-   - `piso` → **1ª entrada** (izquierda) de `colisiones`; `popsolver` → **2ª entrada**.
-   - `colisiones` → `output`. Pon el **display flag** en `output`.
-
-![20 fuente anillo source](img/20_fuente_anillo_source.png)
-*`fuente_anillo`, pestaña Source: emite desde los puntos de `OUT_emisor`.*
-
-![21 fuente anillo birth](img/21_fuente_anillo_birth.png)
-*Pestaña Birth: 10 000 chispas por segundo y vida corta (0.5 ± 0.25 s), para que las chispas de arriba no alcancen a frenarse y caer.*
-
-![22 fuente anillo attributes](img/22_fuente_anillo_attributes.png)
-*Pestaña Attributes: **Use inherited velocity**. Sin esto, la velocidad del paso 4 no sirve de nada.*
+Este código no usa sliders: no hace falta *Create spare parameters*.
 
 ![23 vida aleatoria](img/23_vida_aleatoria.png)
+
+### 6.5 `giro_portal` (POP Axis Force)
+**Tab → POP Axis Force**, nombre `giro_portal`. Crea una fuerza que hace girar las partículas alrededor de un eje, como un remolino.
+
+**Pestaña Shape** (dónde actúa la fuerza):
+- Shape: **Sphere** (actúa dentro de una esfera).
+- Center: **0, 0, 0** (el centro del portal).
+- Axis: **0, 0, 1** (el eje Z: el portal está de pie mirando a la cámara, así que gira alrededor de Z).
+- Radius: escribe la expresión `ch("../../anillo_emisor/radx") * 1.3`. Quiere decir: **el radio del anillo × 1.3**, para que la fuerza siempre cubra un poco más que el anillo mientras crece. (`../../` sube de `giro_portal` a `/obj/portal`; `radx` es el Radius X del Circle `anillo_emisor`.)
+
+**Pestaña Speed** (qué tan fuerte gira):
+- Orbit Speed: escribe la expresión `1.5 * ch("../../anillo_emisor/radx") / 2`. Vale **1.5 cuando el anillo mide 2 m** y menos cuando es chico, así el portal pequeño gira más lento.
+- Lift Speed: **0** (no las empuja a lo largo del eje).
+- Suction Speed: **0** (no las jala hacia el centro).
+
 ![24 giro portal](img/24_giro_portal.png)
-*`giro_portal`: el eje es Z porque el portal está de pie mirando a la cámara.*
+*`giro_portal`, pestaña Speed en el frame 73: el campo Orbit Speed muestra **1.5** porque ahí el anillo ya mide 2 m. Los campos con expresión se ponen en color.*
+
+### 6.6 `hueco` (POP Metaball Force)
+**Tab → POP Metaball Force**, nombre `hueco`. Empuja hacia afuera las chispas que entran a la metaball del paso 5, para que el centro del portal quede limpio.
+- Geometry Source: **SOP** (usar una geometría de afuera del DOP).
+- SOP Path: `../../hueco_metaball` (la metaball del paso 5; elígela con el botón del selector de nodos).
+- Force Scale: **30** (qué tan fuerte empuja).
 
 ![25 hueco metaball force](img/25_hueco_metaball_force.png)
+
+### 6.7 `frenado` (POP Drag)
+**Tab → POP Drag**, nombre `frenado`. Simula la resistencia del aire.
+- Air Resistance: **0.3**. Bajo a propósito: con mucho frenado las chispas se detienen y, en el paso 7, sus líneas se encogen a puntos.
+
 ![26 frenado](img/26_frenado.png)
-*Drag bajo (0.3). Con mucho drag las chispas se frenan y, en el paso 7, sus líneas se encogen a puntos.*
+
+### 6.8 `gravedad_y_ruido` (POP Force)
+**Tab → POP Force**, nombre `gravedad_y_ruido`. Una sola fuerza hace dos cosas:
+- Force: **0, -2, 0**. Una gravedad suave hacia abajo (la real sería -9.8; aquí se quiere que caigan poco).
+- Pestaña **Noise**: Amplitude **1.5** (qué tanto tiemblan) y Swirl Size **0.5** (qué tan chicos son los remolinos del temblor).
 
 ![27 gravedad y ruido](img/27_gravedad_y_ruido.png)
-![28 chispas popobject](img/28_chispas_popobject.png)
-*`chispas` (POP Object), pestaña Physical: el rebote se ajusta aquí **y** en el piso, porque los dos valores se combinan.*
+
+### 6.9 `popsolver` (POP Solver)
+**Tab → POP Solver**, nombre `popsolver`. No se cambia nada. Es el nodo que calcula cómo se mueven las partículas con todas las fuerzas. Tiene **tres entradas** (de izquierda a derecha): 1 *Object*, 2 *Pre-Solve* y 3 *Sources*.
+
+### 6.10 `piso` (Ground Plane)
+**Tab → Ground Plane**, nombre `piso`. Es un piso **infinito e invisible** para que las chispas reboten; el piso que se ve en el render es otro objeto (paso 9).
+- Center Y: **-2.6** (a esa altura está el suelo).
+- Pestaña **Physical:** Bounce **0.35**, Friction **0.5**, Dynamic Friction Scale **0.5** (los mismos valores que `chispas`).
 
 ![29 piso groundplane](img/29_piso_groundplane.png)
-*`piso` (Ground Plane): infinito y **no se ve** en el render; el piso visible es otro objeto (paso 9).*
+
+### 6.11 `colisiones` (Merge)
+**Tab → Merge**, nombre `colisiones`. Junta el piso y las chispas. Se deja por defecto: su relación es *Collide*, así que lo que entra a la **izquierda** (el piso) choca con lo de la **derecha** (las chispas).
+
+### 6.12 Conecta todo
+Arrastra desde la salida de un nodo (abajo) hasta la entrada de otro (arriba). El orden de las entradas importa:
+1. **La cadena de la fuente:** `fuente_anillo` → `vida_aleatoria` → `giro_portal` → `hueco` → `frenado` → `gravedad_y_ruido`, y de ahí a la **3ª entrada** (la de la derecha, *Sources*) del `popsolver`.
+2. **El objeto:** `chispas` → **1ª entrada** (la de la izquierda, *Object*) del `popsolver`.
+3. **El piso:** `piso` → **1ª entrada (izquierda)** de `colisiones`; `popsolver` → **2ª entrada** de `colisiones`. Si los inviertes, las chispas atraviesan el piso.
+4. **La salida:** `colisiones` → `output`. Pon el **display flag** (azul) en `output`.
+
+![02 red chispas sim](img/02_red_chispas_sim.png)
+*Así queda la red dentro de `chispas_sim`. La cadena de la fuente llega a la **3ª entrada** del `popsolver` y el `piso` a la **izquierda** de `colisiones`.*
+
+> [!TIP]
+> **Comprueba**
+> Dale **Play** desde el frame 1. Desde los primeros frames deberían salir chispas del anillo, girando. Si no aparece nada: revisa la ruta de `fuente_anillo` (6.3) y que la cadena llegue a la **3ª** entrada del `popsolver`. Si cambias un valor y no ves el cambio, pulsa **Reset Simulation** (o regresa al frame 1).
 
 ## Paso 7: sacar las chispas a SOPs, color y líneas
 Sal del DOP Network (**U**) y, en `/obj/portal`:
