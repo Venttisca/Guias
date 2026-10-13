@@ -213,8 +213,9 @@ dialog.lb button{position:fixed;top:12px;right:12px;font:600 .9rem var(--f-body)
   <section id="antes">
     <header><h2>Antes de empezar</h2></header>
     <ul><li><strong>Versión:</strong> Houdini 22.0 Apprentice. Algunos nodos se llaman <code>::2.0</code> (POP Source, POP Solver, Attribute Noise); el menú Tab elige la versión nueva solo.</li><li><strong>Unidades:</strong> 1 unidad = 1 metro. El portal mide <strong>2 m de radio</strong> y está de pie en el plano <strong>XY</strong>, mirando hacia +Z, que es donde está la cámara.</li><li><strong>Animación:</strong> 24 fps, frames <strong>1 a 240</strong> (10 s). Se configura en <em>Global Animation Options</em>, el reloj abajo a la derecha.</li><li><strong>Cómo crear nodos:</strong> dentro de una red, pulsa <strong>Tab</strong> y escribe el nombre del nodo. Para entrar a un nodo, doble clic (o <strong>I</strong>); para salir, <strong>U</strong>.</li><li><strong>Renombra cada nodo</strong> con el nombre de la guía. Varias expresiones apuntan a los nodos por nombre (por ejemplo <code>ch(&quot;../anillo_emisor/radx&quot;)</code>).</li><li><strong>Flags:</strong> el <strong>display flag</strong> (azul) dice qué se ve en el viewport y el <strong>render flag</strong> (morado) qué se renderiza. En <code>/obj</code>, el display flag de un objeto también decide <strong>si Karma lo ve</strong>.</li></ul>
-    <div class="note tip"><strong>Los códigos VEX y sus sliders</strong>Los códigos usan <code>chf(&quot;nombre&quot;)</code> para que los valores sean <strong>sliders</strong>. Después de pegar el código en un Wrangle, pulsa el botón <strong>Create spare parameters</strong> (el cuadrito con un <code>+</code> a la derecha del cuadro de código). Aparecen los sliders en 0; luego escribe los valores de la tabla.</div>
+    <div class="note tip"><strong>Los códigos VEX y sus sliders</strong>Los códigos usan <code>chf(&quot;nombre&quot;)</code> para que los valores sean <strong>sliders</strong>. Después de pegar el código en un Wrangle, pulsa el botón <strong>Create spare parameters</strong>. <strong>No tiene texto: es un ícono</strong> (un cuadrito con un deslizador y un <code>+</code>) arriba a la derecha del cuadro de código, a la altura de la palabra <em>VEXpression</em>; al pasar el ratón dice <em>Creates spare parameters for each unique call of ch()</em>. Si no se ve, ensancha el panel de parámetros. Aparecen los sliders en 0; luego escribe los valores de la tabla.</div>
     <div class="note tip"><strong>Expresiones</strong>Algunos parámetros llevan una <strong>expresión</strong> en vez de un número (por ejemplo <code>-$F * 4</code>). Escríbela tal cual en el campo; el campo se pone verde. <code>$F</code> es el frame actual y <code>$T</code> el tiempo en segundos.</div>
+    <div class="note"><strong>Cómo leer las rutas y los nombres de esta guía</strong>Muchas expresiones leen un valor de <strong>otro nodo</strong>. Por ejemplo, <code>ch(&quot;../anillo_emisor/radx&quot;)</code> se lee así:<ul><li><strong><code>ch(&quot;…&quot;)</code></strong> (o <code>chf(&quot;…&quot;)</code> dentro de un Wrangle) = «dame el valor de este parámetro».</li><li><strong><code>radx</code></strong> = el <strong>nombre interno</strong> del parámetro <em>Radius</em> (campo X) del Circle. Cada parámetro tiene una etiqueta visible (<em>Radius</em>) y un nombre interno (<code>radx</code>, <code>rady</code>). Para verlo, <strong>pasa el ratón sobre la etiqueta</strong> del parámetro: el recuadro que aparece dice <code>Parameter: radx</code>.</li><li><strong><code>anillo_emisor</code></strong> = el nombre del nodo donde está ese parámetro (por eso hay que renombrar los nodos igual que en la guía).</li><li><strong><code>..</code></strong> = «sube un nivel», como en las carpetas de una computadora. Desde un nodo dentro de <code>/obj/portal</code>, <code>..</code> es la propia red <code>/obj/portal</code>, así que <code>../anillo_emisor</code> es el nodo <code>anillo_emisor</code> que está a su lado. Desde dentro de <code>chispas_sim</code> hay que subir <strong>dos</strong> niveles (<code>../../</code>): uno para salir del nodo y otro para salir del DOP Network.</li><li>Es lo mismo que escribir la <strong>ruta completa</strong>: <code>ch(&quot;/obj/portal/anillo_emisor/radx&quot;)</code>. La relativa se usa porque sigue funcionando si renombras o copias el objeto <code>portal</code>.</li><li><strong>Truco para no escribirlas:</strong> clic derecho sobre el parámetro de origen (por ejemplo <em>Radius</em> de <code>anillo_emisor</code>) → <strong>Copy Parameter</strong>; luego clic derecho sobre el parámetro de destino → <strong>Paste Relative References</strong>. Houdini escribe la expresión con la ruta correcta.</li><li><strong>Siglas de los niveles de Houdini:</strong> <strong>SOP</strong> = redes de geometría (dentro de un objeto como <code>portal</code>); <strong>DOP</strong> = redes de simulación (<code>chispas_sim</code>); <strong>POP</strong> = los nodos de partículas que van dentro de un DOP; <strong>ROP</strong> = nodos de render en <code>/out</code>; <strong>COP</strong> = composición en <code>/img</code> (Copernicus). Los nodos <strong>Null</strong> llamados <code>OUT_…</code> o <code>RENDER_…</code> no hacen nada: marcan la salida de una etapa para que otros nodos la lean por su ruta.</li><li><strong>En los códigos VEX:</strong> <code>@P</code> es la posición del punto y <code>@ptnum</code> su número. La letra antes de <code>@</code> dice el tipo del atributo: <code>f@</code> = número decimal, <code>v@</code> = vector (x, y, z), <code>i@</code> = número entero. <code>@Frame</code> y <code>@Time</code> son el frame y el tiempo actuales.</li><li><strong>Variables en rutas de archivo:</strong> <code>$HIP</code> = la carpeta donde está guardado tu <code>.hipnc</code>; <code>$F3</code> y <code>$F4</code> = el número de frame con 3 o 4 dígitos (<code>portal_073.jpg</code>, <code>portal.0073.exr</code>).</li></ul></div>
   </section>
 
   <section id="mapa">
@@ -264,7 +265,7 @@ guardar_comp (ROP Image) ┄┄ lee saturacion</pre></div>
     <div class="tw"><table>
   <tr><th>Parámetro</th><th>Expresión</th><th>Qué hace</th></tr>
   <tr><td>Radius (X)</td><td><code>2 * (0.12 + 0.88 * (1 - pow(1 - clamp(($F - 1) / 60, 0, 1), 3)))</code></td><td>Crece hasta 2 m en el frame 61 (curva cúbica <em>ease-out</em>)</td></tr>
-  <tr><td>Radius (Y)</td><td><code>ch(&quot;radx&quot;)</code></td><td>Igual que X</td></tr>
+  <tr><td>Radius (Y)</td><td><code>ch(&quot;radx&quot;)</code></td><td>Copia el valor de Radius X <strong>de este mismo nodo</strong> (<code>radx</code> es el nombre interno del campo X); así el círculo nunca se vuelve óvalo</td></tr>
   <tr><td>Arc Angles (2º campo)</td><td><code>fit($F, 1, 36, 1, 360)</code></td><td>El arco se abre de 0° a 360° en 1.5 s</td></tr>
   <tr><td>Rotate (Z)</td><td><code>-$F * 4</code></td><td>El anillo gira 4° por frame</td></tr>
 </table></div>
@@ -294,6 +295,8 @@ v@N = normalize(set(@P.x, @P.y, 0));</code></pre></div>
     <ol><li>Debajo, <strong>Tab → Attribute Wrangle</strong>, nombre <code>desplazar_por_ruido</code>:</li></ol>
     <div class="code"><span class="tag">VEX · desplazar_por_ruido</span><pre><code>// Empuja el borde por la normal radial segun el valor del mapa de ruido (en metros).
 // Se escala con el radio: un portal pequeno se deforma proporcionalmente igual.
+// chf("../anillo_emisor/radx") = el Radius X del nodo anillo_emisor (paso 2).
+// ".." sube de este wrangle a /obj/portal, donde esta anillo_emisor.
 float escala = chf("../anillo_emisor/radx") / 2.0;
 @P += v@N * f@ruido * escala;</code></pre></div>
     <figure class="shot"><button type="button"><img src="img/13_desplazar_por_ruido.png" alt="13 desplazar por ruido" loading="lazy" width="820" height="380"></button></figure>
@@ -322,9 +325,10 @@ v@v = (cross(eje, r) * giro + r * salida) * k * rafaga;
 v@v += (rand(sem + 1) - 0.5) * chf("variacion");
 
 // Portal pequeno = chispas lentas: la velocidad crece con el radio (1 a 2 m)
+// Lee el Radius X del nodo anillo_emisor (paso 2): 0.24 al inicio, 2 al final
 float escala_radio = chf("../anillo_emisor/radx") / 2.0;
 v@v *= escala_radio;</code></pre></div>
-    <p>Pulsa <strong>Create spare parameters</strong> y pon:</p>
+    <p>Pulsa <strong>Create spare parameters</strong> (el ícono del recuadro de arriba) y pon los valores. <code>escala_radio</code> <strong>no</strong> genera slider: no es un valor nuevo, lee el radio de <code>anillo_emisor</code>.</p>
     <div class="tw"><table>
   <tr><th>Slider</th><th>Valor</th><th>Qué controla</th></tr>
   <tr><td>vel_giro</td><td><b>9</b></td><td>Velocidad a lo largo del borde (m/s)</td></tr>
@@ -342,7 +346,7 @@ v@v *= escala_radio;</code></pre></div>
     <p>Una <strong>metaball</strong> del tamaño del hueco. No se ve; solo la usa la fuerza <code>hueco</code> (paso 6) para empujar hacia afuera las chispas que se acercan al centro. Es el truco que usó RISE FX en la película.</p>
     <div class="tw"><table>
   <tr><th>Nodo</th><th>Nombre</th><th>Parámetros</th></tr>
-  <tr><td>Metaball</td><td><code>hueco_metaball</code></td><td>Radius X, Y y Z: <code>ch(&quot;../anillo_emisor/radx&quot;) * 0.9</code> (crece con el portal). No se conecta a nada</td></tr>
+  <tr><td>Metaball</td><td><code>hueco_metaball</code></td><td>Radius X, Y y Z: <code>ch(&quot;../anillo_emisor/radx&quot;) * 0.9</code>, es decir, <strong>el 90% del radio del anillo</strong> (lee el Radius X de <code>anillo_emisor</code>, que está en la misma red). Así el hueco crece con el portal. No se conecta a nada</td></tr>
 </table></div>
     <figure class="shot"><button type="button"><img src="img/15_hueco_metaball.png" alt="15 hueco metaball" loading="lazy" width="820" height="420"></button></figure>
   </section>
@@ -353,10 +357,10 @@ v@v *= escala_radio;</code></pre></div>
     <div class="tw"><table>
   <tr><th>Nodo</th><th>Nombre</th><th>Parámetros</th></tr>
   <tr><td>POP Object</td><td><code>chispas</code></td><td>Pestaña <b>Physical</b>: Bounce <b>0.35</b>, Friction <b>0.5</b>, Dynamic Friction Scale <b>0.5</b></td></tr>
-  <tr><td>POP Source</td><td><code>fuente_anillo</code></td><td><b>Source:</b> Emission Type <b>Points</b>, SOP <code>../../OUT_emisor</code>. <b>Birth:</b> Const. Activation 1, Const. Birth Rate <b>10 000</b>, Life Expectancy <b>0.5</b>, Life Variance <b>0.25</b>. <b>Attributes:</b> Initial Velocity <b>Use inherited velocity</b>, Inherit Velocity <b>1</b></td></tr>
+  <tr><td>POP Source</td><td><code>fuente_anillo</code></td><td><b>Source:</b> Emission Type <b>Points</b>, SOP <code>../../OUT_emisor</code> (el Null del paso 4; <code>../../</code> sube dos niveles: sale de <code>fuente_anillo</code> y sale de <code>chispas_sim</code>, hasta <code>/obj/portal</code>). <b>Birth:</b> Const. Activation 1, Const. Birth Rate <b>10 000</b>, Life Expectancy <b>0.5</b>, Life Variance <b>0.25</b>. <b>Attributes:</b> Initial Velocity <b>Use inherited velocity</b>, Inherit Velocity <b>1</b></td></tr>
   <tr><td>POP Wrangle</td><td><code>vida_aleatoria</code></td><td>Código abajo</td></tr>
-  <tr><td>POP Axis Force</td><td><code>giro_portal</code></td><td>Shape <b>Sphere</b>, Center (0, 0, 0), Axis (0, 0, <b>1</b>), Radius <code>ch(&quot;../../anillo_emisor/radx&quot;) * 1.3</code>. Pestaña <b>Speed:</b> Orbit Speed <code>1.5 * ch(&quot;../../anillo_emisor/radx&quot;) / 2</code>, Lift 0, Suction 0</td></tr>
-  <tr><td>POP Metaball Force</td><td><code>hueco</code></td><td>Geometry Source <b>SOP</b>, SOP Path <code>../../hueco_metaball</code>, Force Scale <b>30</b></td></tr>
+  <tr><td>POP Axis Force</td><td><code>giro_portal</code></td><td>Shape <b>Sphere</b>, Center (0, 0, 0), Axis (0, 0, <b>1</b>), Radius <code>ch(&quot;../../anillo_emisor/radx&quot;) * 1.3</code> (el radio del anillo × 1.3; <code>../../</code> sube de dentro de <code>chispas_sim</code> a <code>/obj/portal</code>). Pestaña <b>Speed:</b> Orbit Speed <code>1.5 * ch(&quot;../../anillo_emisor/radx&quot;) / 2</code> (1.5 cuando el anillo mide 2 m; más lento cuando es chico), Lift 0, Suction 0</td></tr>
+  <tr><td>POP Metaball Force</td><td><code>hueco</code></td><td>Geometry Source <b>SOP</b>, SOP Path <code>../../hueco_metaball</code> (la metaball del paso 5, dos niveles arriba), Force Scale <b>30</b></td></tr>
   <tr><td>POP Drag</td><td><code>frenado</code></td><td>Air Resistance <b>0.3</b></td></tr>
   <tr><td>POP Force</td><td><code>gravedad_y_ruido</code></td><td>Force (0, <b>-2</b>, 0). Pestaña <b>Noise:</b> Amplitude <b>1.5</b>, Swirl Size <b>0.5</b></td></tr>
   <tr><td>POP Solver</td><td><code>popsolver</code></td><td>Por defecto</td></tr>
@@ -387,7 +391,7 @@ if (i@vida_ok == 0) {
   <section id="p7" data-step>
     <header><span class="num">7</span><h2>Sacar las chispas a SOPs, color y líneas</h2><label class="done-toggle"><input type="checkbox" id="done-p7">Hecho</label></header>
     <p>Sal del DOP Network (<strong>U</strong>) y, en <code>/obj/portal</code>:</p>
-    <ol><li><strong>Tab → DOP Import</strong>, nombre <code>importar_chispas</code>: DOP Network <code>../chispas_sim</code>, Objects <code>chispas</code>, Import Style <strong>Fetch Geometry from DOP Network</strong>.</li></ol>
+    <ol><li><strong>Tab → DOP Import</strong>, nombre <code>importar_chispas</code>: DOP Network <code>../chispas_sim</code> (el DOP Network del paso 6; aquí solo se sube <strong>un</strong> nivel porque <code>importar_chispas</code> está en <code>/obj/portal</code>, junto a él), Objects <code>chispas</code> (el POP Object de adentro), Import Style <strong>Fetch Geometry from DOP Network</strong>.</li></ol>
     <figure class="shot"><button type="button"><img src="img/30_importar_chispas.png" alt="30 importar chispas" loading="lazy" width="820" height="400"></button></figure>
     <ol><li>Debajo, <strong>Attribute Wrangle</strong> <code>color_por_edad</code>. El color depende de la edad de la chispa:</li></ol>
     <div class="code"><span class="tag">VEX · color_por_edad</span><pre><code>// Color y tamano de cada chispa segun su edad (0 = nace, 1 = muere)
@@ -500,7 +504,7 @@ for (int i = 0; i &lt; npts; i++) removepoint(0, i);</code></pre></div>
   <section id="p12" data-step>
     <header><span class="num">12</span><h2>Humo leve en el aro (opcional)</h2><label class="done-toggle"><input type="checkbox" id="done-p12">Hecho</label></header>
     <p>Un humo 3D suave que sale del aro y brilla naranja. Es opcional: las chispas lo tapan bastante, y se nota sobre todo después de la composición, como un halo rojizo y una bruma. Por eso lleva un <strong>interruptor</strong> para prenderlo y apagarlo.</p>
-    <ol><li><strong>Interruptor.</strong> En <code>/obj</code>, <strong>Tab → Null</strong>, nombre <code>CONTROLES</code>. Engrane → <strong>Edit Parameter Interface</strong> → arrastra un <strong>Toggle</strong>: Name <code>humo</code>, Label <code>Humo en el aro</code>, Default encendido → <em>Accept</em>.</li><li><strong>Objeto.</strong> En <code>/obj</code>, <strong>Tab → Geometry</strong>, nombre <code>humo</code>. En su parámetro <strong>Display</strong> (pestaña Transform, abajo) escribe la expresión <code>ch(&quot;../CONTROLES/humo&quot;)</code>. Como en <code>/obj</code> el display también es la visibilidad en Karma, apagado no aparece ni se renderiza, y no cuesta tiempo.</li><li>Entra a <code>humo</code> y crea:</li></ol>
+    <ol><li><strong>Interruptor.</strong> En <code>/obj</code>, <strong>Tab → Null</strong>, nombre <code>CONTROLES</code>. Engrane → <strong>Edit Parameter Interface</strong> → arrastra un <strong>Toggle</strong>: Name <code>humo</code>, Label <code>Humo en el aro</code>, Default encendido → <em>Accept</em>.</li><li><strong>Objeto.</strong> En <code>/obj</code>, <strong>Tab → Geometry</strong>, nombre <code>humo</code>. En su parámetro <strong>Display</strong> (pestaña Transform, abajo) escribe la expresión <code>ch(&quot;../CONTROLES/humo&quot;)</code>: lee el interruptor <code>humo</code> del Null <code>CONTROLES</code> (paso 12.1). <code>..</code> sube del objeto <code>humo</code> a <code>/obj</code>, donde está <code>CONTROLES</code>. Vale 1 si está encendido y 0 si no. Como en <code>/obj</code> el display también es la visibilidad en Karma, apagado no aparece ni se renderiza, y no cuesta tiempo.</li><li>Entra a <code>humo</code> y crea:</li></ol>
     <div class="tw"><table>
   <tr><th>Nodo</th><th>Nombre</th><th>Parámetros</th></tr>
   <tr><td>Object Merge</td><td><code>traer_anillo</code></td><td>Object 1 <code>/obj/portal/OUT_anillo</code> (el aro deformado, que crece con el portal)</td></tr>
@@ -564,9 +568,9 @@ f@pscale = chf("tamano");</code></pre></div>
   <tr><td>Las chispas de arriba se frenan y <b>caen</b> como polvo</td><td>Viven demasiado</td><td>Vida corta (0.5 ± 0.25 s, multiplicador 0.6–1.5) y más Birth Rate para compensar</td></tr>
   <tr><td>El anillo brillante es una <b>línea quebrada</b> (zigzag)</td><td>Ruido de alta frecuencia por número de punto en <code>look_anillo</code></td><td>Ruido por <b>ángulo</b> y de baja frecuencia, como en el código del paso 9</td></tr>
   <tr><td>Las chispas no se mueven al nacer</td><td>No heredan la velocidad</td><td><code>fuente_anillo</code> → Attributes → <b>Use inherited velocity</b></td></tr>
-  <tr><td>Chispas dentro del hueco</td><td>Fuerza <code>hueco</code> débil o metaball pequeña</td><td>Force Scale 30 y radio <code>radx × 0.9</code></td></tr>
+  <tr><td>Chispas dentro del hueco</td><td>Fuerza <code>hueco</code> débil o metaball pequeña</td><td>Force Scale 30 y radio de la metaball = radio del anillo (<code>radx</code> de <code>anillo_emisor</code>) × 0.9</td></tr>
   <tr><td>Atraviesan el piso</td><td>Ground plane a la derecha del merge</td><td><code>piso</code> en la <b>1ª entrada</b> (izquierda) de <code>colisiones</code></td></tr>
-  <tr><td>Un "chorro" enorme al inicio</td><td>La velocidad no escala con el radio</td><td>Las últimas 2 líneas de <code>velocidad_tangencial</code></td></tr>
+  <tr><td>Un "chorro" enorme al inicio</td><td>La velocidad no escala con el radio</td><td>Las últimas líneas de <code>velocidad_tangencial</code> (las que leen el radio de <code>anillo_emisor</code>)</td></tr>
   <tr><td>Las chispas salen <b>negras</b> en Karma</td><td>Geomprop <code>Cd</code></td><td>Usa <b><code>displayColor</code></b></td></tr>
   <tr><td>Las chispas salen <b>amarillas</b> en Karma</td><td>El HDR satura el naranja</td><td>Colores más saturados e <code>intensidad</code> 3.5, no 6</td></tr>
   <tr><td>El <b>piso no sale</b> en Karma</td><td>Display flag del objeto <code>piso</code> apagado</td><td>Enciéndelo: en <code>/obj</code> el display flag es la visibilidad</td></tr>

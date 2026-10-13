@@ -43,11 +43,28 @@ Paso a paso para construir el portal del *sling ring* de Doctor Strange: un anil
 
 > [!TIP]
 > **Los códigos VEX y sus sliders**
-> Los códigos usan `chf("nombre")` para que los valores sean **sliders**. Después de pegar el código en un Wrangle, pulsa el botón **Create spare parameters** (el cuadrito con un `+` a la derecha del cuadro de código). Aparecen los sliders en 0; luego escribe los valores de la tabla.
+> Los códigos usan `chf("nombre")` para que los valores sean **sliders**. Después de pegar el código en un Wrangle, pulsa el botón **Create spare parameters**. **No tiene texto: es un ícono** (un cuadrito con un deslizador y un `+`) arriba a la derecha del cuadro de código, a la altura de la palabra *VEXpression*; al pasar el ratón dice *Creates spare parameters for each unique call of ch()*. Si no se ve, ensancha el panel de parámetros. Aparecen los sliders en 0; luego escribe los valores de la tabla.
 
 > [!TIP]
 > **Expresiones**
 > Algunos parámetros llevan una **expresión** en vez de un número (por ejemplo `-$F * 4`). Escríbela tal cual en el campo; el campo se pone verde. `$F` es el frame actual y `$T` el tiempo en segundos.
+
+> [!NOTE]
+> **Cómo leer las rutas y los nombres de esta guía**
+> Muchas expresiones leen un valor de **otro nodo**. Por ejemplo, `ch("../anillo_emisor/radx")` se lee así:
+> - **`ch("…")`** (o `chf("…")` dentro de un Wrangle) = «dame el valor de este parámetro».
+> - **`radx`** = el **nombre interno** del parámetro *Radius* (campo X) del Circle. Cada parámetro tiene una etiqueta visible (*Radius*) y un nombre interno (`radx`, `rady`). Para verlo, **pasa el ratón sobre la etiqueta** del parámetro: el recuadro que aparece dice `Parameter: radx`.
+> - **`anillo_emisor`** = el nombre del nodo donde está ese parámetro (por eso hay que renombrar los nodos igual que en la guía).
+> - **`..`** = «sube un nivel», como en las carpetas de una computadora. Desde un nodo dentro de `/obj/portal`, `..` es la propia red `/obj/portal`, así que `../anillo_emisor` es el nodo `anillo_emisor` que está a su lado. Desde dentro de `chispas_sim` hay que subir **dos** niveles (`../../`): uno para salir del nodo y otro para salir del DOP Network.
+> - Es lo mismo que escribir la **ruta completa**: `ch("/obj/portal/anillo_emisor/radx")`. La relativa se usa porque sigue funcionando si renombras o copias el objeto `portal`.
+>
+> **Truco para no escribirlas:** clic derecho sobre el parámetro de origen (por ejemplo *Radius* de `anillo_emisor`) → **Copy Parameter**; luego clic derecho sobre el parámetro de destino → **Paste Relative References**. Houdini escribe la expresión con la ruta correcta.
+>
+> **Siglas de los niveles de Houdini:** **SOP** = redes de geometría (dentro de un objeto como `portal`); **DOP** = redes de simulación (`chispas_sim`); **POP** = los nodos de partículas que van dentro de un DOP; **ROP** = nodos de render en `/out`; **COP** = composición en `/img` (Copernicus). Los nodos **Null** llamados `OUT_…` o `RENDER_…` no hacen nada: marcan la salida de una etapa para que otros nodos la lean por su ruta.
+>
+> **En los códigos VEX:** `@P` es la posición del punto y `@ptnum` su número. La letra antes de `@` dice el tipo del atributo: `f@` = número decimal, `v@` = vector (x, y, z), `i@` = número entero. `@Frame` y `@Time` son el frame y el tiempo actuales.
+>
+> **Variables en rutas de archivo:** `$HIP` = la carpeta donde está guardado tu `.hipnc`; `$F3` y `$F4` = el número de frame con 3 o 4 dígitos (`portal_073.jpg`, `portal.0073.exr`).
 
 ## Mapa de lo que vas a construir
 Dentro de `/obj/portal` (nivel SOP):
@@ -111,7 +128,7 @@ Expresiones (escríbelas en el campo):
 | Parámetro | Expresión | Qué hace |
 |---|---|---|
 | Radius (X) | `2 * (0.12 + 0.88 * (1 - pow(1 - clamp(($F - 1) / 60, 0, 1), 3)))` | Crece hasta 2 m en el frame 61 (curva cúbica *ease-out*) |
-| Radius (Y) | `ch("radx")` | Igual que X |
+| Radius (Y) | `ch("radx")` | Copia el valor de Radius X **de este mismo nodo** (`radx` es el nombre interno del campo X); así el círculo nunca se vuelve óvalo |
 | Arc Angles (2º campo) | `fit($F, 1, 36, 1, 360)` | El arco se abre de 0° a 360° en 1.5 s |
 | Rotate (Z) | `-$F * 4` | El anillo gira 4° por frame |
 
@@ -148,6 +165,8 @@ v@N = normalize(set(@P.x, @P.y, 0));
 ```vex
 // Empuja el borde por la normal radial segun el valor del mapa de ruido (en metros).
 // Se escala con el radio: un portal pequeno se deforma proporcionalmente igual.
+// chf("../anillo_emisor/radx") = el Radius X del nodo anillo_emisor (paso 2).
+// ".." sube de este wrangle a /obj/portal, donde esta anillo_emisor.
 float escala = chf("../anillo_emisor/radx") / 2.0;
 @P += v@N * f@ruido * escala;
 ```
@@ -181,10 +200,12 @@ v@v = (cross(eje, r) * giro + r * salida) * k * rafaga;
 v@v += (rand(sem + 1) - 0.5) * chf("variacion");
 
 // Portal pequeno = chispas lentas: la velocidad crece con el radio (1 a 2 m)
+// Lee el Radius X del nodo anillo_emisor (paso 2): 0.24 al inicio, 2 al final
 float escala_radio = chf("../anillo_emisor/radx") / 2.0;
 v@v *= escala_radio;
 ```
-Pulsa **Create spare parameters** y pon:
+Pulsa **Create spare parameters** (el ícono del recuadro de arriba) y pon los valores. `escala_radio` **no** genera slider: no es un valor nuevo, lee el radio de `anillo_emisor`.
+
 
 | Slider | Valor | Qué controla |
 |---|---|---|
@@ -203,7 +224,7 @@ Una **metaball** del tamaño del hueco. No se ve; solo la usa la fuerza `hueco` 
 
 | Nodo | Nombre | Parámetros |
 |---|---|---|
-| Metaball | `hueco_metaball` | Radius X, Y y Z: `ch("../anillo_emisor/radx") * 0.9` (crece con el portal). No se conecta a nada |
+| Metaball | `hueco_metaball` | Radius X, Y y Z: `ch("../anillo_emisor/radx") * 0.9`, es decir, **el 90% del radio del anillo** (lee el Radius X de `anillo_emisor`, que está en la misma red). Así el hueco crece con el portal. No se conecta a nada |
 
 ![15 hueco metaball](img/15_hueco_metaball.png)
 
@@ -214,10 +235,10 @@ Una **metaball** del tamaño del hueco. No se ve; solo la usa la fuerza `hueco` 
 | Nodo | Nombre | Parámetros |
 |---|---|---|
 | POP Object | `chispas` | Pestaña **Physical**: Bounce **0.35**, Friction **0.5**, Dynamic Friction Scale **0.5** |
-| POP Source | `fuente_anillo` | **Source:** Emission Type **Points**, SOP `../../OUT_emisor`. **Birth:** Const. Activation 1, Const. Birth Rate **10 000**, Life Expectancy **0.5**, Life Variance **0.25**. **Attributes:** Initial Velocity **Use inherited velocity**, Inherit Velocity **1** |
+| POP Source | `fuente_anillo` | **Source:** Emission Type **Points**, SOP `../../OUT_emisor` (el Null del paso 4; `../../` sube dos niveles: sale de `fuente_anillo` y sale de `chispas_sim`, hasta `/obj/portal`). **Birth:** Const. Activation 1, Const. Birth Rate **10 000**, Life Expectancy **0.5**, Life Variance **0.25**. **Attributes:** Initial Velocity **Use inherited velocity**, Inherit Velocity **1** |
 | POP Wrangle | `vida_aleatoria` | Código abajo |
-| POP Axis Force | `giro_portal` | Shape **Sphere**, Center (0, 0, 0), Axis (0, 0, **1**), Radius `ch("../../anillo_emisor/radx") * 1.3`. Pestaña **Speed:** Orbit Speed `1.5 * ch("../../anillo_emisor/radx") / 2`, Lift 0, Suction 0 |
-| POP Metaball Force | `hueco` | Geometry Source **SOP**, SOP Path `../../hueco_metaball`, Force Scale **30** |
+| POP Axis Force | `giro_portal` | Shape **Sphere**, Center (0, 0, 0), Axis (0, 0, **1**), Radius `ch("../../anillo_emisor/radx") * 1.3` (el radio del anillo × 1.3; `../../` sube de dentro de `chispas_sim` a `/obj/portal`). Pestaña **Speed:** Orbit Speed `1.5 * ch("../../anillo_emisor/radx") / 2` (1.5 cuando el anillo mide 2 m; más lento cuando es chico), Lift 0, Suction 0 |
+| POP Metaball Force | `hueco` | Geometry Source **SOP**, SOP Path `../../hueco_metaball` (la metaball del paso 5, dos niveles arriba), Force Scale **30** |
 | POP Drag | `frenado` | Air Resistance **0.3** |
 | POP Force | `gravedad_y_ruido` | Force (0, **-2**, 0). Pestaña **Noise:** Amplitude **1.5**, Swirl Size **0.5** |
 | POP Solver | `popsolver` | Por defecto |
@@ -268,7 +289,7 @@ if (i@vida_ok == 0) {
 ## Paso 7: sacar las chispas a SOPs, color y líneas
 Sal del DOP Network (**U**) y, en `/obj/portal`:
 
-1. **Tab → DOP Import**, nombre `importar_chispas`: DOP Network `../chispas_sim`, Objects `chispas`, Import Style **Fetch Geometry from DOP Network**.
+1. **Tab → DOP Import**, nombre `importar_chispas`: DOP Network `../chispas_sim` (el DOP Network del paso 6; aquí solo se sube **un** nivel porque `importar_chispas` está en `/obj/portal`, junto a él), Objects `chispas` (el POP Object de adentro), Import Style **Fetch Geometry from DOP Network**.
 
 ![30 importar chispas](img/30_importar_chispas.png)
 
@@ -432,7 +453,7 @@ El **glow** de la referencia no se hace en el render: se agrega en composición 
 Un humo 3D suave que sale del aro y brilla naranja. Es opcional: las chispas lo tapan bastante, y se nota sobre todo después de la composición, como un halo rojizo y una bruma. Por eso lleva un **interruptor** para prenderlo y apagarlo.
 
 1. **Interruptor.** En `/obj`, **Tab → Null**, nombre `CONTROLES`. Engrane → **Edit Parameter Interface** → arrastra un **Toggle**: Name `humo`, Label `Humo en el aro`, Default encendido → *Accept*.
-2. **Objeto.** En `/obj`, **Tab → Geometry**, nombre `humo`. En su parámetro **Display** (pestaña Transform, abajo) escribe la expresión `ch("../CONTROLES/humo")`. Como en `/obj` el display también es la visibilidad en Karma, apagado no aparece ni se renderiza, y no cuesta tiempo.
+2. **Objeto.** En `/obj`, **Tab → Geometry**, nombre `humo`. En su parámetro **Display** (pestaña Transform, abajo) escribe la expresión `ch("../CONTROLES/humo")`: lee el interruptor `humo` del Null `CONTROLES` (paso 12.1). `..` sube del objeto `humo` a `/obj`, donde está `CONTROLES`. Vale 1 si está encendido y 0 si no. Como en `/obj` el display también es la visibilidad en Karma, apagado no aparece ni se renderiza, y no cuesta tiempo.
 3. Entra a `humo` y crea:
 
 | Nodo | Nombre | Parámetros |
@@ -535,9 +556,9 @@ En el frame 73 deberías tener, más o menos:
 | Las chispas de arriba se frenan y **caen** como polvo | Viven demasiado | Vida corta (0.5 ± 0.25 s, multiplicador 0.6–1.5) y más Birth Rate para compensar |
 | El anillo brillante es una **línea quebrada** (zigzag) | Ruido de alta frecuencia por número de punto en `look_anillo` | Ruido por **ángulo** y de baja frecuencia, como en el código del paso 9 |
 | Las chispas no se mueven al nacer | No heredan la velocidad | `fuente_anillo` → Attributes → **Use inherited velocity** |
-| Chispas dentro del hueco | Fuerza `hueco` débil o metaball pequeña | Force Scale 30 y radio `radx × 0.9` |
+| Chispas dentro del hueco | Fuerza `hueco` débil o metaball pequeña | Force Scale 30 y radio de la metaball = radio del anillo (`radx` de `anillo_emisor`) × 0.9 |
 | Atraviesan el piso | Ground plane a la derecha del merge | `piso` en la **1ª entrada** (izquierda) de `colisiones` |
-| Un "chorro" enorme al inicio | La velocidad no escala con el radio | Las últimas 2 líneas de `velocidad_tangencial` |
+| Un "chorro" enorme al inicio | La velocidad no escala con el radio | Las últimas líneas de `velocidad_tangencial` (las que leen el radio de `anillo_emisor`) |
 | Las chispas salen **negras** en Karma | Geomprop `Cd` | Usa **`displayColor`** |
 | Las chispas salen **amarillas** en Karma | El HDR satura el naranja | Colores más saturados e `intensidad` 3.5, no 6 |
 | El **piso no sale** en Karma | Display flag del objeto `piso` apagado | Enciéndelo: en `/obj` el display flag es la visibilidad |

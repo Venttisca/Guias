@@ -27,7 +27,16 @@ Paso a paso para construir el tornado de la **prueba 3b** del experimento de Sim
 
 > [!TIP]
 > **Los códigos VEX**
-> Los tres bloques de código usan `chf("nombre")` para que los valores sean **sliders**. Después de pegar el código en un Wrangle, pulsa el botón **Create spare parameters** (el cuadrito con un `+` a la derecha del cuadro de código). Aparecen los sliders en 0; luego escribe los valores de la tabla.
+> Los tres bloques de código usan `chf("nombre")` para que los valores sean **sliders**. Después de pegar el código en un Wrangle, pulsa el botón **Create spare parameters**. **No tiene texto: es un ícono** (un cuadrito con un deslizador y un `+`) arriba a la derecha del cuadro de código, a la altura de la palabra *VEXpression*; al pasar el ratón dice *Creates spare parameters for each unique call of ch()*. Si no se ve, ensancha el panel de parámetros. Aparecen los sliders en 0; luego escribe los valores de la tabla.
+
+> [!NOTE]
+> **Cómo leer las rutas y los nombres de esta guía**
+> - **Rutas como `/obj/tornado_vortex/emisor`:** son la «dirección» de un nodo, como las carpetas de una computadora. `/obj` es el nivel de objetos, `tornado_vortex` el objeto del paso 1 y `emisor` el nodo de adentro. Se escriben en campos como **SOP Path** para que un nodo lea la geometría de otro sin cable. Para no escribirlas a mano, pulsa el botón que está a la derecha del campo (abre un selector de nodos) y elige el nodo.
+> - **Siglas de los niveles de Houdini:** **SOP** = redes de geometría (dentro de `tornado_vortex`); **DOP** = redes de simulación (`sim_tornado`); **POP** = los nodos de partículas que van dentro de un DOP; **ROP** = nodos de render en `/out`.
+> - **Object Mask** (en el DOP Import) es el nombre del objeto de la simulación que quieres sacar: aquí `particulas`, el POP Object del paso 7.
+> - **Nombres como `merge1` o `gravity1`:** son los que Houdini pone por defecto; no hace falta cambiarlos.
+> - **En los códigos VEX:** `@P` es la posición del punto y `@ptnum` su número. La letra antes de `@` dice el tipo del atributo: `f@` = número decimal, `v@` = vector (x, y, z), `i@` = número entero. `@Frame` y `@Time` son el frame y el tiempo actuales.
+> - **Variables:** `$T` = el tiempo actual en segundos; `$HIP` = la carpeta donde está guardado tu `.hipnc`; `$F4` = el número de frame con 4 dígitos (`0073`).
 
 ## Mapa de lo que vas a construir
 Dentro de `/obj/tornado_vortex` (nivel SOP):
